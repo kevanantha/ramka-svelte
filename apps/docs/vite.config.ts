@@ -13,6 +13,17 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 			adapter: adapter(),
+			prerender: {
+				// Pages link the original's /docs/* routes before every one is
+				// ported; warn instead of failing the build on those.
+				handleHttpError: ({ status, path, referrer, message }) => {
+					if (status === 404 && path.startsWith('/docs/')) {
+						console.warn(`[prerender] ${path} (linked from ${referrer}) is not ported yet`);
+						return;
+					}
+					throw new Error(message);
+				}
+			},
 			// Compile the library from source instead of its packaged `dist`.
 			// Re-packaging rewrites every dist file at once, which left the dev
 			// server serving several copies of one module (each with its own

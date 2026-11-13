@@ -17,8 +17,9 @@ Work in progress. Ported so far:
 - **Pull to dismiss.** Drag the image down (touch, or a two-finger trackpad swipe) to close; a short pull springs back on a velocity-aware spring. `Content` publishes `--lightbox-pull-progress` and the snap-back's `--lightbox-pull-snap-duration` / `--lightbox-pull-snap-easing` on itself and `Backdrop`, with `data-pulling`, `data-pull-snapping` and `data-pull-dismissing` for styling. `pullToClose={false}` turns it off and skips its chunk.
 
 - **Stage.** `Stage` scopes pull to dismiss, zoom pan bounds and wheel / pinch, and the media keys (arrows, Home / End, `+` `-` `0`) to the media pane, so side panels beside it keep native scroll and their own keys. Its snippet's `morph` attachment (also on `getLightboxStageContext()`) makes one element the shared open/close morph destination, such as a 9:16 stories frame.
+- **Docs presets.** `/presets/store` and `/presets/stories`, with the preset page scaffolding (title, live demo, file tabs with highlighted source and copy).
 
-Not ported yet: `ThumbnailStrip`, `createHandle`, `CSPProvider`, the docs pages, presets and tests.
+Not ported yet: `ThumbnailStrip`, `createHandle`, `CSPProvider`, the other docs pages and presets, and tests.
 
 ## Usage
 
