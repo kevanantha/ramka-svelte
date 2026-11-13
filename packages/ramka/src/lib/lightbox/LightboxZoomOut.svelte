@@ -8,6 +8,7 @@
 
 <script lang="ts">
 	import { getLightboxContext } from './lightbox-state.svelte';
+	import { accessibleNameWarning } from './accessible-name-warning';
 	import { getLightboxZoomContext } from './LightboxZoom.svelte';
 
 	let { ref = $bindable(null), onclick, children, ...rest }: LightboxZoomOutProps = $props();
@@ -23,6 +24,7 @@
 <!-- Ships no aria-label: give it visible text or your own localized label. -->
 <button
 	bind:this={ref}
+	{@attach accessibleNameWarning('Lightbox.ZoomOut')}
 	type="button"
 	{...rest}
 	{disabled}

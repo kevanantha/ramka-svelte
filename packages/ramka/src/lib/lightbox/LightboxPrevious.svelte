@@ -8,6 +8,7 @@
 
 <script lang="ts">
 	import { getLightboxContext } from './lightbox-state.svelte';
+	import { accessibleNameWarning } from './accessible-name-warning';
 
 	let { ref = $bindable(null), onclick, children, ...rest }: LightboxPreviousProps = $props();
 
@@ -19,6 +20,7 @@
 
 <button
 	bind:this={ref}
+	{@attach accessibleNameWarning('Lightbox.Previous')}
 	type="button"
 	{...rest}
 	{disabled}

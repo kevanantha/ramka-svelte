@@ -8,6 +8,7 @@
 
 <script lang="ts">
 	import { getLightboxContext } from './lightbox-state.svelte';
+	import { accessibleNameWarning } from './accessible-name-warning';
 
 	let { ref = $bindable(null), onclick, children, ...rest }: LightboxCloseProps = $props();
 
@@ -16,6 +17,7 @@
 
 <button
 	bind:this={ref}
+	{@attach accessibleNameWarning('Lightbox.Close')}
 	type="button"
 	{...rest}
 	data-ramka-close=""

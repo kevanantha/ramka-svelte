@@ -57,6 +57,7 @@
 	import { getLightboxContext } from './lightbox-state.svelte';
 	import { getSlidesPreload } from './LightboxSlides.svelte';
 	import { tryPaintCanvasPlaceholder } from './lightbox-placeholder';
+	import { accessibleNameWarning } from './accessible-name-warning';
 
 	let {
 		index,
@@ -266,6 +267,16 @@
 		};
 	}
 
+	// Inactive items are `aria-hidden`, which the check skips, so a gallery
+	// nudges for the slide on screen rather than once per slide.
+	const nameWarning = accessibleNameWarning('Lightbox.Item', {
+		namedByContent: false,
+		hint:
+			'A slide is a `group`, so its caption does not name it — pass `aria-label` ' +
+			'carrying the position (the APG carousel pattern puts it in the name, e.g. ' +
+			'`${i + 1} of ${photos.length}` in your own wording).'
+	});
+
 	const semantics = $derived(
 		lightbox.hasTablist
 			? { role: 'tabpanel', 'aria-labelledby': `${lightbox.baseId}-tab-${index}` }
@@ -276,6 +287,7 @@
 {#if visible}
 	<div
 		bind:this={ref}
+		{@attach nameWarning}
 		id="{lightbox.baseId}-panel-{index}"
 		{...semantics}
 		aria-hidden={!active}

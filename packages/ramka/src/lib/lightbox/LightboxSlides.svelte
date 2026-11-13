@@ -64,7 +64,7 @@
 	} from './lightbox-slides-geometry';
 	import { readInlineScroll, writeInlineScroll } from './lightbox-direction';
 	import { isFirefox } from './is-firefox';
-	import { BROWSER } from 'esm-env';
+	import { BROWSER, DEV } from 'esm-env';
 	import { LightboxSlidesCssVars } from './lightbox-css-vars';
 
 	let {
@@ -104,6 +104,26 @@
 			snapSuppressDepth = 0;
 			el.style.scrollSnapType = SLIDES_SCROLL_SNAP_TYPE;
 		};
+	});
+
+	// Dev: warn when the resolved `dir` disagrees with the CSS direction the
+	// scroller renders in — an RTL page that never passed `dir` to Root keeps
+	// LTR behavior, so the active index and the visible slide drift apart
+	// with no other symptom. Also catches a Portal/Content `dir` that
+	// contradicts Root.
+	$effect(() => {
+		const el = ref;
+		const dir = lightbox.dir;
+		if (!DEV || !el) return;
+		const computed = getComputedStyle(el).direction === 'rtl' ? 'rtl' : 'ltr';
+		if (computed === dir) return;
+		console.warn(
+			`[ramka] Lightbox.Root resolves dir="${dir}" but Lightbox.Slides renders ` +
+				`with direction: ${computed}. Navigation will resolve the wrong slide.\n` +
+				`Pass dir="${computed}" to Lightbox.Root — it mirrors navigation and is ` +
+				'written to the Portal host, so CSS and behavior agree. If a `dir` is set ' +
+				'on Portal or Content, make it match Root.'
+		);
 	});
 
 	/**
