@@ -1,0 +1,13 @@
+/* Lightbox motion tokens (docs demo skin — not shipped with ramka). */
+
+@theme {
+	/* Snappy decelerating curve — "easeOutExpo". Used for the backdrop,
+     content, and (in demos) morph-target opacity transitions. Matches the
+     root cross-fade easing the library writes during a morph. */
+	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+	/* No open/close duration token: the library always publishes the Root's
+     `viewTransition` preset timing as `--lightbox-vt-duration` on the Portal
+     host, so the backdrop/content fades (open-close.css) read it directly —
+     one motion clock with or without a View Transition. */
+}

@@ -1,0 +1,13 @@
+services:
+  docs:
+    # The docs compile the library from source (alias in apps/docs/vite.config.ts).
+    command: pnpm --filter docs exec vite dev --host 127.0.0.1 --port $PORT --strictPort
+    portal:
+      title: ramka-svelte docs
+  docs-preview:
+    # Production build of the docs. Use this portal to judge speed: the dev
+    # server above serves ~140 unbundled modules, which takes seconds over a
+    # remote connection before clicks do anything.
+    command: pnpm build && pnpm --filter docs exec vite preview --host 127.0.0.1 --port $PORT --strictPort
+    portal:
+      title: ramka-svelte docs (production build)
