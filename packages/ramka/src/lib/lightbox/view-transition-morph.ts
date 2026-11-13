@@ -1,0 +1,1240 @@
+import { flushSync } from 'svelte';
+import { DEV } from 'esm-env';
+
+import { isAndroidBlinkSnapshotRoot } from './is-android-blink';
+import { isFirefox } from './is-firefox';
+import { afterNextRenderFrame, shouldYieldBeforeCapture } from './vt-capture-yield';
+import { acquireVtTouchGuard } from './vt-touch-guard';
+import { maybeUpgradeToCompositedMorph, prewarmCompositedCssSheet } from './vt-composited-morph';
+import { isViewTransitionPreset } from './vt-timing';
+import type { LightboxViewTransitionPreset } from './vt-timing';
+import { pageNeedsNameIsolation } from './vt-name-isolation';
+import {
+	findDestinationMorphTarget,
+	findItemMorphTarget,
+	findTriggerMorphTarget
+} from './morph-target';
+import { DEFAULT_DECODE_MAX_WAIT, VIEW_TRANSITION_NAME } from './vt-constants';
+import { LightboxDocumentCssVars } from './lightbox-css-vars';
+import {
+	LightboxDocumentDataAttributes,
+	LightboxSlideDataAttributes
+} from './lightbox-data-attributes';
+import { resolveScrollTriggerOption, resolveTriggerIndex, scrollTriggerEl } from './scroll-trigger';
+import type { ScrollTriggerIntoView } from './scroll-trigger';
+
+// ---------------------------------------------------------------------------
+// View Transition helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Thin wrapper around `document.startViewTransition`. Reads the method off
+ * `document` at call time (rather than capturing it) so environments — and
+ * tests — that define/replace it after module load still work.
+ */
+function startViewTransition(callback: () => void | Promise<void>): {
+	finished: Promise<void>;
+	ready?: Promise<void>;
+} {
+	return (
+		document as Document & {
+			startViewTransition: (cb: () => void | Promise<void>) => {
+				finished: Promise<void>;
+				ready?: Promise<void>;
+			};
+		}
+	).startViewTransition(callback);
+}
+
+/**
+ * Android Chrome aborts a view transition if the snapshot root size changes
+ * between old and new capture (URL-bar show/hide). Wait until layout
+ * `innerHeight` and `visualViewport.height` agree **and stay still**.
+ *
+ * A one-shot "heights differ → wait until they match" is not enough: the bar
+ * animation can pass through a matching frame (or sit in a stable mismatch)
+ * and then keep moving during capture. Do not treat a stable mismatch as
+ * settled.
+ *
+ * Only invoked on mobile Blink (see `shouldWaitForSnapshotRootSettle`). jsdom
+ * has no compositor; skip so a stray call cannot defer tests off the click tick.
+ */
+const SNAPSHOT_ROOT_STABLE_FRAMES = 8;
+const SNAPSHOT_ROOT_SETTLE_MAX_MS = 1000;
+
+function readSnapshotRoot(): {
+	innerW: number;
+	innerH: number;
+	vvH: number | null;
+	scrollX: number;
+	scrollY: number;
+} {
+	const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+	return {
+		innerW: window.innerWidth,
+		innerH: window.innerHeight,
+		vvH: vv?.height ?? null,
+		scrollX: Math.round(window.scrollX),
+		scrollY: Math.round(window.scrollY)
+	};
+}
+
+function snapshotRootKey(snap: ReturnType<typeof readSnapshotRoot>): string {
+	return `${snap.innerW}x${snap.innerH}|vv:${snap.vvH ?? 'n'}|s:${snap.scrollX},${snap.scrollY}`;
+}
+
+function layoutMatchesVisualViewport(snap: ReturnType<typeof readSnapshotRoot>): boolean {
+	if (snap.vvH == null) return true;
+	return Math.abs(snap.innerH - snap.vvH) <= 1;
+}
+
+function waitForStableSnapshotRoot(): Promise<void> {
+	if (typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent)) {
+		return Promise.resolve();
+	}
+	return new Promise((resolve) => {
+		const t0 = performance.now();
+		let lastKey = snapshotRootKey(readSnapshotRoot());
+		let stable = 0;
+		const tick = () => {
+			const snap = readSnapshotRoot();
+			const key = snapshotRootKey(snap);
+			const aligned = layoutMatchesVisualViewport(snap);
+			const elapsed = performance.now() - t0;
+			if (key === lastKey && aligned) {
+				stable += 1;
+			} else {
+				lastKey = key;
+				stable = 0;
+			}
+			if (
+				stable >= SNAPSHOT_ROOT_STABLE_FRAMES ||
+				(elapsed >= SNAPSHOT_ROOT_SETTLE_MAX_MS && aligned) ||
+				elapsed >= SNAPSHOT_ROOT_SETTLE_MAX_MS * 1.5
+			) {
+				resolve();
+				return;
+			}
+			requestAnimationFrame(tick);
+		};
+		requestAnimationFrame(tick);
+	});
+}
+
+/**
+ * Blink on Android includes URL-bar outsets in the view-transition snapshot
+ * root. Desktop Chromium and WebKit (Safari, and every iOS browser) do not
+ * have that abort, so they skip the settle wait.
+ */
+function shouldWaitForSnapshotRootSettle(): boolean {
+	if (typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent)) return false;
+	return isAndroidBlinkSnapshotRoot();
+}
+
+/**
+ * Wait for an image element to decode (pixels composited and ready to paint).
+ * If the image is already complete (e.g. served from cache on a re-open),
+ * resolves immediately with zero delay. Otherwise waits for `decode()` to
+ * finish, bounded by `maxWait` ms so the transition is never blocked
+ * for too long on slow connections. Resolves immediately for non-image
+ * elements (video, custom HTML).
+ *
+ * Works with plain `<img>` as well as framework image components (e.g.
+ * Next.js `<Image>`) that render a native `<img>` with `srcset`. The
+ * browser's `decode()` resolves for whichever source was selected from
+ * the srcset. For best results, images inside Lightbox.Item should use
+ * `loading="eager"` so the browser starts fetching immediately on mount
+ * rather than waiting for a lazy-load intersection.
+ */
+function waitForImageDecode(
+	target: HTMLElement | null,
+	maxWait: number = DEFAULT_DECODE_MAX_WAIT
+): Promise<void> {
+	if (!target) return Promise.resolve();
+	const img =
+		target.tagName === 'IMG'
+			? (target as HTMLImageElement)
+			: target.querySelector<HTMLImageElement>('img');
+	if (!img || !('decode' in img)) return Promise.resolve();
+	// Image already loaded (e.g. cached from a previous open) — no wait needed.
+	// The VT API captures the snapshot after this callback resolves, so the
+	// browser will have composited the cached image by then.
+	if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+	return new Promise<void>((resolve) => {
+		let settled = false;
+		const settle = () => {
+			if (settled) return;
+			settled = true;
+			resolve();
+		};
+		img.decode().then(settle, settle);
+		setTimeout(settle, maxWait);
+	});
+}
+
+/**
+ * Returns the `<img>` the open morph should wait on, or `null` when there's
+ * nothing to wait for (no image, no `decode()` support, or already decoded).
+ *
+ * This lets the caller decide *synchronously* whether an `await` is needed at
+ * all. Awaiting an already-resolved promise still yields a microtask, which
+ * would turn the open path async even when the destination is ready — deferring
+ * `startViewTransition` past the click tick. Checking readiness up front keeps
+ * the common (cached / no-image) case fully synchronous.
+ */
+function getPendingDecodeImage(target: HTMLElement | null): HTMLImageElement | null {
+	if (!target) return null;
+	const img =
+		target.tagName === 'IMG'
+			? (target as HTMLImageElement)
+			: target.querySelector<HTMLImageElement>('img');
+	if (!img || !('decode' in img)) return null;
+	if (img.complete && img.naturalWidth > 0) return null;
+	return img;
+}
+
+/**
+ * Whether the destination morph target has a resolvable size to morph *into*.
+ *
+ * Uses the target's **rendered box** (`getBoundingClientRect`) rather than the
+ * image's `naturalWidth`, because the box is the ground truth for what the View
+ * Transition captures — and it's already correct *before* the pixels load
+ * whenever the layout is reserved by explicit `width`/`height` attributes or CSS
+ * dimensions (e.g. a Next.js `<Image>`). So a sized-but-not-yet-loaded image
+ * still morphs correctly.
+ *
+ * The one case we skip is a genuinely collapsed 0×0 box — an unsized `<img>`
+ * whose intrinsic size is its only sizing and which hasn't loaded (decode wait
+ * timed out on a slow connection). Morphing into a 0×0 box shrinks the trigger
+ * into the corner (Firefox) / center (Chrome), so we fall back to a plain root
+ * crossfade instead.
+ *
+ * Called after the `commitPrepare` mount, so layout is already flushed and this
+ * read is cheap. Note the tree is `visibility: hidden` during prepare, which
+ * still lays out (unlike `display: none`), so the box is accurate.
+ */
+function isMorphTargetSizeResolvable(target: HTMLElement | null): boolean {
+	if (!target) return false;
+	const rect = target.getBoundingClientRect();
+	return rect.width > 0 && rect.height > 0;
+}
+
+/**
+ * Dev-only: items already warned about, so we nudge each offending item exactly
+ * once instead of on every open. Keyed by element via a WeakSet so it never
+ * leaks and resets naturally when the item unmounts.
+ */
+const warnedUnwiredItems = DEV ? new WeakSet<HTMLElement>() : null;
+const warnedCollapsedMedia = DEV ? new WeakSet<HTMLElement>() : null;
+
+/**
+ * Dev-only guardrail. Fires when an item is about to morph but resolved its own
+ * element as the morph target — i.e. the consumer never wired `image` or
+ * `morph` via the `Lightbox.Item` children snippet. The trigger will
+ * then animate into the *entire* `<Lightbox.Item>` box (usually the full,
+ * flex-centered viewport slide) instead of the letterboxed media, which reads
+ * as a broken, non-native morph.
+ */
+function warnUnwiredItemMorph(itemEl: HTMLElement, target: HTMLElement) {
+	if (!warnedUnwiredItems || target !== itemEl || warnedUnwiredItems.has(itemEl)) {
+		return;
+	}
+	warnedUnwiredItems.add(itemEl);
+	// eslint-disable-next-line no-console
+	console.warn(
+		'[ramka] Lightbox.Item is morphing into its own element (the full ' +
+			'<Lightbox.Item> box) because no morph target was designated. Wrap ' +
+			'the destination media in <Lightbox.Media> (recommended), or attach ' +
+			'the `image` / `morph` attachments from Lightbox.Item so the trigger morphs into ' +
+			'the media instead.',
+		itemEl
+	);
+}
+
+/**
+ * Dev-only: Media (or a morph target under Media) collapsed to 0×0 — usually
+ * missing `width`/`height` / img dims, or Media not under a sized Zoom (or
+ * other size container) so the cqw/cqh fit-box cannot resolve.
+ */
+function warnCollapsedMediaMorph(target: HTMLElement | null) {
+	if (!warnedCollapsedMedia || !target) return;
+	const media = target.hasAttribute('data-ramka-media')
+		? target
+		: (target.closest('[data-ramka-media]') as HTMLElement | null);
+	if (!media || warnedCollapsedMedia.has(media)) return;
+	if (isMorphTargetSizeResolvable(target)) return;
+	warnedCollapsedMedia.add(media);
+	// eslint-disable-next-line no-console
+	console.warn(
+		'[ramka] Lightbox.Media morph target has no resolvable size (0×0). ' +
+			'Pass `width`/`height` on Media (or HTML width/height on the child <img>) ' +
+			'and nest Media under Lightbox.Zoom (a size container) so the fit-box can resolve. ' +
+			'Falling back to a root crossfade.',
+		media
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Morph document-state helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Whether the trigger's `crossfade` mode applies to the given morph phase.
+ * `data-crossfade` is `'open' | 'close' | 'both'` (or absent = neither).
+ */
+export function shouldUseCrossfade(
+	mode: string | undefined,
+	phase: 'opening' | 'closing'
+): boolean {
+	if (mode === 'both') return true;
+	if (phase === 'opening') return mode === 'open';
+	return mode === 'close';
+}
+
+/**
+ * Split a CSS value list on top-level whitespace, keeping `calc(...)` intact.
+ * `"calc(infinity * 1px) 4px"` → `["calc(infinity * 1px)", "4px"]`.
+ */
+function splitCssList(value: string): string[] {
+	const tokens: string[] = [];
+	let current = '';
+	let depth = 0;
+	for (const ch of value) {
+		if (ch === '(') depth += 1;
+		else if (ch === ')') depth = Math.max(0, depth - 1);
+
+		if (/\s/.test(ch) && depth === 0) {
+			if (current) tokens.push(current);
+			current = '';
+			continue;
+		}
+		current += ch;
+	}
+	if (current) tokens.push(current);
+	return tokens;
+}
+
+/**
+ * Stand-in px value for non-finite radii (`calc(infinity * 1px)`, i.e.
+ * Tailwind v4 `rounded-full`, or unparsable pill hacks). Large enough that the
+ * corner-overlap scaling in {@link resolveMorphBorderRadius} drives every
+ * other radius' share toward its true limit, small enough that
+ * `radius * factor` stays numerically exact.
+ */
+const NON_FINITE_RADIUS_PX = 1e9;
+
+/**
+ * Convert one border-radius corner token to a computed px length (pre
+ * overlap-scaling). `percentBasis` is the box width — the basis for the
+ * horizontal radius component per spec, which is the component the morph
+ * animates.
+ */
+function borderRadiusTokenToPx(token: string, el: HTMLElement, percentBasis: number): number {
+	const t = token.trim().toLowerCase();
+	if (!t) return 0;
+
+	// Tailwind v4 `rounded-full` / any non-finite calc.
+	if (/infinity/i.test(t)) return NON_FINITE_RADIUS_PX;
+
+	if (t.endsWith('%')) {
+		const pct = Number.parseFloat(t);
+		if (!Number.isFinite(pct)) return NON_FINITE_RADIUS_PX;
+		return Math.max(0, (percentBasis * pct) / 100);
+	}
+
+	const n = Number.parseFloat(t);
+	// Unparsable token — treat like a pill hack, same as non-finite.
+	if (!Number.isFinite(n)) return NON_FINITE_RADIUS_PX;
+
+	if (t.endsWith('rem')) {
+		const rootFs = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+		return Math.max(0, n * rootFs);
+	}
+	if (t.endsWith('em')) {
+		const fs = Number.parseFloat(getComputedStyle(el).fontSize) || 16;
+		return Math.max(0, n * fs);
+	}
+
+	// px, or other absolute units already serialized as px by getComputedStyle.
+	return Math.max(0, n);
+}
+
+/** Round a px value for CSS serialization (avoids 63.99999997px noise). */
+function roundRadiusPx(v: number): number {
+	return Math.round(v * 100) / 100;
+}
+
+/**
+ * Resolve an element's border-radius into the **used** px values the VT group
+ * can interpolate — matching what the browser actually renders.
+ *
+ * Tailwind v4 `rounded-full` is `border-radius: calc(infinity * 1px)`. CSS
+ * cannot interpolate `infinity` → `8px`, so the morph group's radius animation
+ * would stick or jump. Percentages, `rem`/`em`, and the old `9999px` full-pill
+ * trick have the same problem relative to a fixed px destination.
+ *
+ * Corner radii are resolved per the CSS corner-overlap rule
+ * (css-backgrounds-3 §5.5): when the sum of adjacent radii overflows an edge,
+ * ALL radii are multiplied by the same factor
+ * `f = min(1, edge / sum-of-adjacent-radii)` taken over all four edges.
+ * Capping each corner independently at half the shorter side (the used pill
+ * radius) is only equivalent for uniform radii — for asymmetric radii like
+ * `16px 16px 160px 160px` on a wide box it undershoots the large corners, so
+ * the close morph would animate toward a flatter shape than the live trigger
+ * and visibly snap on the last frame.
+ *
+ * Note: `getComputedStyle` usually already returns px for `rem`/`em`; we still
+ * resolve those units for engines that leave them as specified.
+ */
+export function resolveMorphBorderRadius(el: HTMLElement): string {
+	const raw = getComputedStyle(el).borderRadius.trim();
+	if (!raw) return '0px';
+
+	const { width, height } = el.getBoundingClientRect();
+	if (!(width > 0 && height > 0)) return '0px';
+
+	// Drop elliptical `/` second list — the morph clip animates a single list
+	// (the horizontal component).
+	const horizontal = raw.split('/')[0]!.trim();
+	const tokens = splitCssList(horizontal);
+	if (tokens.length === 0) return '0px';
+
+	// Expand the 1–4 token shorthand to per-corner values [tl, tr, br, bl].
+	const [a, b = a, c = a, d = b] = tokens;
+	const [tl, tr, br, bl] = [a, b, c, d].map((token) =>
+		borderRadiusTokenToPx(token!, el, width)
+	) as [number, number, number, number];
+
+	// CSS corner-overlap rule: one uniform scale factor across all corners,
+	// constrained by every edge. Zero sums divide to Infinity, which min()
+	// ignores in favor of 1.
+	const f = Math.min(
+		1,
+		width / (tl + tr),
+		width / (bl + br),
+		height / (tr + br),
+		height / (tl + bl)
+	);
+
+	const used = [tl, tr, br, bl].map((r) => roundRadiusPx(r * f)) as [
+		number,
+		number,
+		number,
+		number
+	];
+
+	// Serialize back to the minimal shorthand.
+	const [utl, utr, ubr, ubl] = used;
+	let list: number[];
+	if (ubl === utr) {
+		if (ubr === utl) {
+			list = utr === utl ? [utl] : [utl, utr];
+		} else {
+			list = [utl, utr, ubr];
+		}
+	} else {
+		list = [utl, utr, ubr, ubl];
+	}
+	return list.map((v) => `${v}px`).join(' ');
+}
+
+/**
+ * Publish the Root's `viewTransition` timing preset onto `documentElement`
+ * for this morph only, as the `data-ramka-vt-preset` attribute. The preset's
+ * duration/easing vars are delivered by static attribute-keyed rules in the
+ * structural sheet (vt-structural-styles.ts) — writing inherited custom
+ * properties inline on `<html>` per morph forced WebKit into a full-document
+ * restyle inside the capture window on large pages. Timing is preset-driven,
+ * not consumer CSS: arbitrary curves teleport on iOS (see the preset table
+ * in vt-timing.ts).
+ */
+function promoteVtMotionTokens(
+	docEl: HTMLElement,
+	preset: boolean | LightboxViewTransitionPreset | undefined
+) {
+	docEl.setAttribute(
+		LightboxDocumentDataAttributes.viewTransitionPreset,
+		isViewTransitionPreset(preset) ? preset : 'default'
+	);
+}
+
+/**
+ * Write an inline root var only when its value actually changed. EVERY
+ * inherited custom-property write on `<html>` — including a same-value
+ * rewrite — invalidates computed style for the whole document, which WebKit
+ * pays as a full restyle (~75ms at 16k elements) inside the morph's capture
+ * flush. Reading the inline declaration back is flush-free, so re-opening the
+ * same trigger (radii unchanged — the common case) writes nothing at all.
+ */
+function setDocVarIfChanged(docEl: HTMLElement, prop: string, value: string) {
+	if (docEl.style.getPropertyValue(prop) === value) return;
+	docEl.style.setProperty(prop, value);
+}
+
+/** Flush threshold (CSS px) for treating a box edge as viewport-flush. */
+const FULL_BLEED_EPS_PX = 0.5;
+/**
+ * Temporary padding added on the Slide for Firefox full-bleed VT capture.
+ * Matches the consumer workaround (slide padding fixes the bug); 1px is enough
+ * to break viewport-edge equality without a visible jump.
+ */
+const FIREFOX_FULL_BLEED_CAPTURE_INSET_PX = 1;
+
+interface FullBleedAxes {
+	horizontal: boolean;
+	vertical: boolean;
+}
+
+/**
+ * Which axes of the element's **layout** box fill the layout viewport.
+ *
+ * Uses `offsetWidth` / `offsetHeight` (pre-transform), not
+ * `getBoundingClientRect()`. Pull-to-dismiss leaves `scale()` on the Item;
+ * the transformed rect looks inset so a visual check would skip this
+ * workaround — but layout is still full-bleed, and that is what Firefox's VT
+ * capture mishandles (same as a 1px Slide border/padding fixing pull-dismiss).
+ * Letterboxed axes (layout smaller than the viewport) do not hit this path.
+ */
+function getFullBleedAxes(el: HTMLElement): FullBleedAxes {
+	const w = el.offsetWidth;
+	const h = el.offsetHeight;
+	if (!(w > 0 && h > 0)) {
+		return { horizontal: false, vertical: false };
+	}
+	const viewportW = document.documentElement.clientWidth;
+	const viewportH = document.documentElement.clientHeight;
+	return {
+		horizontal: w >= viewportW - FULL_BLEED_EPS_PX,
+		vertical: h >= viewportH - FULL_BLEED_EPS_PX
+	};
+}
+
+function isHorizontallyFullBleed(el: HTMLElement): boolean {
+	return getFullBleedAxes(el).horizontal;
+}
+
+function isVerticallyFullBleed(el: HTMLElement): boolean {
+	return getFullBleedAxes(el).vertical;
+}
+
+type CaptureInsetRestore = () => void;
+
+/**
+ * Firefox-only capture workaround when the morph target is full-bleed on X
+ * and/or Y (both edges of that axis flush with the viewport).
+ *
+ * Why pad the Slide (not the morph target): Media sizes with `cqw`/`cqh`
+ * against Zoom, and Zoom fills the Slide content box. Shrinking Media alone
+ * leaves that size container viewport-flush — the same geometry Firefox
+ * mishandles. Padding the Slide (what manually fixes the bug) shrinks the
+ * content box → Zoom → fit-box Media as one coherent layout, so the named
+ * snapshot is no longer edge-to-edge on the affected axis.
+ *
+ * Close: call before `startViewTransition` (old snapshot).  
+ * Open: call inside the VT callback after reveal + naming (new snapshot).
+ */
+function applyFirefoxFullBleedCaptureInset(morphTarget: HTMLElement): CaptureInsetRestore | null {
+	if (!isFirefox()) return null;
+	const axes = getFullBleedAxes(morphTarget);
+	if (!axes.horizontal && !axes.vertical) return null;
+
+	const slide =
+		morphTarget.closest<HTMLElement>(`[${LightboxSlideDataAttributes.slide}]`) ?? morphTarget;
+
+	const prevPaddingLeft = slide.style.paddingLeft;
+	const prevPaddingRight = slide.style.paddingRight;
+	const prevPaddingTop = slide.style.paddingTop;
+	const prevPaddingBottom = slide.style.paddingBottom;
+	const cs = getComputedStyle(slide);
+	const inset = FIREFOX_FULL_BLEED_CAPTURE_INSET_PX;
+
+	if (axes.horizontal) {
+		slide.style.paddingLeft = `${(parseFloat(cs.paddingLeft) || 0) + inset}px`;
+		slide.style.paddingRight = `${(parseFloat(cs.paddingRight) || 0) + inset}px`;
+	}
+	if (axes.vertical) {
+		slide.style.paddingTop = `${(parseFloat(cs.paddingTop) || 0) + inset}px`;
+		slide.style.paddingBottom = `${(parseFloat(cs.paddingBottom) || 0) + inset}px`;
+	}
+	// Ensure cqw/cqh / Media layout flush before VT capture reads geometry.
+	void morphTarget.offsetWidth;
+
+	return () => {
+		slide.style.paddingLeft = prevPaddingLeft;
+		slide.style.paddingRight = prevPaddingRight;
+		slide.style.paddingTop = prevPaddingTop;
+		slide.style.paddingBottom = prevPaddingBottom;
+	};
+}
+
+/**
+ * Identity of the morph that currently owns the document-level state.
+ *
+ * Document view transitions are exclusive, but their FINALIZERS are not:
+ * starting a new transition skips the active one, and the skipped
+ * transition's `finished.finally` runs a microtask later — after the new
+ * morph has already promoted its own state. That happens whenever two
+ * transitions interleave: open lightbox B while lightbox A's close morph is
+ * in flight (different Roots, possibly different `viewTransition` presets),
+ * or rapidly reopen the same lightbox mid-close. Without ownership tracking
+ * the stale finalizer wipes the live morph's attributes and vars — timing
+ * silently falls back to the default preset, name isolation turns off, and a
+ * hard-cut open loses `--lightbox-morph-new-opacity: 1` (CSS fallback 0), so
+ * the morphing image simply disappears.
+ *
+ * Module-level on purpose: the state lives on `documentElement`, which is
+ * shared by every Root on the page, so per-Root generation counters cannot
+ * see cross-Root interleaves.
+ */
+let morphStateOwner = 0;
+
+/**
+ * Applies the document-level state that drives the morph CSS: the phase
+ * attribute, optional `data-ramka-crossfade` (with hard-cut opacity vars when
+ * absent), from/to border-radius vars, and the `viewTransition` preset's
+ * timing (`data-ramka-vt-preset` + `--lightbox-vt-*` vars).
+ *
+ * Returns an ownership token; pass it to {@link clearMorphState} so a stale
+ * finalizer can never wipe a newer morph's state (see {@link morphStateOwner}).
+ */
+function applyMorphState(
+	docEl: HTMLElement,
+	phase: 'opening' | 'closing',
+	opts: {
+		useCrossfade: boolean;
+		fromRadius: string | null;
+		toRadius: string | null;
+		preset: boolean | LightboxViewTransitionPreset | undefined;
+	}
+): number {
+	// Detect BEFORE this morph names its own targets (setMorphName runs after),
+	// so the inline-style probe can't match the morph's own names.
+	const needsIsolation = pageNeedsNameIsolation();
+
+	docEl.setAttribute(LightboxDocumentDataAttributes.viewTransition, phase);
+	promoteVtMotionTokens(docEl, opts.preset);
+	if (opts.useCrossfade) {
+		docEl.setAttribute(LightboxDocumentDataAttributes.crossfade, '');
+	}
+	// Arm the universal name-neutralizing rule only when the page declares
+	// foreign view-transition-names. The rule keys on its own root attribute,
+	// and flipping it invalidates style for the whole document — a ~120ms
+	// restyle at 20k elements that most pages never need to pay (see
+	// vt-name-isolation.ts).
+	if (needsIsolation) {
+		docEl.setAttribute(LightboxDocumentDataAttributes.viewTransitionIsolate, '');
+	}
+	// Adopt the composited morph's persistent sheet here (a no-op after the
+	// first morph): the imminent capture flush subsumes the adopt's restyle,
+	// whereas adopting it inside the `ready` microtask — where the sheet gets
+	// its content — would visibly delay the first morph frame on large pages.
+	prewarmCompositedCssSheet();
+	// Hard-cut snapshot opacities (old stays opaque as a paint fallback; new is
+	// 1 on open / 0 on close) are published by static phase-keyed rules in the
+	// structural sheet — see vt-structural-styles.ts for the full rationale.
+	// Only the per-morph radius pair still needs inline writes. They are stored
+	// direction-independently (trigger side / item side; the static phase rules
+	// derive from/to), so closing after opening — and every later re-open of
+	// the same trigger — rewrites identical values, which setDocVarIfChanged
+	// turns into no writes at all. `?? '0px'` (the consuming rules' fallback)
+	// rather than removeProperty, so a stale value from an earlier morph can
+	// never leak into a radius-less one.
+	const triggerRadius = (phase === 'opening' ? opts.fromRadius : opts.toRadius) ?? '0px';
+	const itemRadius = (phase === 'opening' ? opts.toRadius : opts.fromRadius) ?? '0px';
+	setDocVarIfChanged(docEl, LightboxDocumentCssVars.morphRadiusTrigger, triggerRadius);
+	setDocVarIfChanged(docEl, LightboxDocumentCssVars.morphRadiusItem, itemRadius);
+	return ++morphStateOwner;
+}
+
+/**
+ * Assigns the morph `view-transition-name` to an element with inline
+ * `!important`: the document-level isolation rule sets `view-transition-name:
+ * none !important` on every element while the morph is running (so unrelated
+ * consumer-named elements aren't captured), and an inline `!important`
+ * declaration outranks that author-`!important` rule on specificity, keeping the
+ * morph target the sole captured group.
+ *
+ * NOTE: we deliberately do NOT also set `contain: layout paint` here. It was a
+ * snapshot-raster perf hint, but establishing a fresh paint/containment context
+ * on the morph target forces its backing store to be rasterized from scratch at
+ * capture time — which races the placeholder image's decode/upload and can leave
+ * the captured "new" snapshot blank or unsized for the first frame(s).
+ */
+function setMorphName(el: HTMLElement) {
+	el.style.setProperty('view-transition-name', VIEW_TRANSITION_NAME, 'important');
+}
+
+/** Clears the name set by {@link setMorphName}. */
+function clearMorphName(el: HTMLElement) {
+	el.style.removeProperty('view-transition-name');
+}
+
+/**
+ * Removes the document-level attributes set by {@link applyMorphState} — but
+ * only if `owner` still owns the state. A no-op when a newer morph has
+ * promoted its own state since (see {@link morphStateOwner}).
+ *
+ * The inline radius vars are deliberately NOT removed: every one of their
+ * consumers is gated behind the attributes removed here (view-transition
+ * pseudo rules), so stale values are inert — and each `removeProperty` of an
+ * inherited custom property on `<html>` inflates the teardown restyle the
+ * same way a write does. The next morph overwrites them (or writes the '0px'
+ * neutral value) via {@link setDocVarIfChanged}.
+ */
+function clearMorphState(docEl: HTMLElement, owner: number) {
+	if (owner !== morphStateOwner) return;
+	docEl.removeAttribute(LightboxDocumentDataAttributes.viewTransition);
+	docEl.removeAttribute(LightboxDocumentDataAttributes.crossfade);
+	docEl.removeAttribute(LightboxDocumentDataAttributes.viewTransitionPreset);
+	// Removing the isolation attribute pays the same whole-document restyle as
+	// setting it — but only when it was armed, i.e. the page actually declares
+	// foreign names. A no-op removal costs nothing.
+	docEl.removeAttribute(LightboxDocumentDataAttributes.viewTransitionIsolate);
+}
+
+// ---------------------------------------------------------------------------
+// Morph runtime (lazy-loaded from Root)
+// ---------------------------------------------------------------------------
+
+/**
+ * What the morph reads from and writes back to its owner. `LightboxState`
+ * passes one object of live getters, so every read is current — the engine
+ * never caches a value across an `await`.
+ */
+interface MorphHost {
+	readonly morphTo: 'active' | 'origin' | 'closest';
+	readonly scrollTriggerIntoView: ScrollTriggerIntoView;
+	/** Upper bound (ms) to await the destination image decode; 0 disables. */
+	readonly decodeMaxWait: number;
+	/**
+	 * Optional consumer wait after prepare + decode, before the View Transition.
+	 * See `Lightbox.Root` `onBeforeOpen`.
+	 */
+	readonly onBeforeOpen:
+		| ((ctx: { destination: Element | null; signal: AbortSignal }) => void | Promise<void>)
+		| undefined;
+	/** The AbortController for the in-flight `onBeforeOpen` (if any). */
+	beforeOpenAbort: AbortController | null;
+	readonly triggerElements: Map<number, HTMLElement>;
+	/** Trigger element → its designated morph descendant (see findTriggerMorphTarget). */
+	readonly triggerMorphElements: WeakMap<HTMLElement, HTMLElement>;
+	readonly activeItemElement: HTMLElement | null;
+	/** Item element → its designated morph descendant (see findItemMorphTarget). */
+	readonly itemMorphElements: WeakMap<HTMLElement, HTMLElement>;
+	/**
+	 * Shared capture destination (Stage `morph`). When set, the VT names this
+	 * node instead of the active item.
+	 */
+	readonly destinationMorphElement: HTMLElement | null;
+	readonly openingTriggerIndex: number;
+	/**
+	 * Exact opening trigger (the clicked one). Preferred over the index map so
+	 * the morph is correct when several triggers share one index.
+	 */
+	readonly openingTriggerElement: HTMLElement | null;
+	readonly activeIndex: number;
+	/**
+	 * The Root's `viewTransition` prop value. Named presets select the morph
+	 * timing (see vt-timing.ts); `true`/unknown values run the default preset.
+	 */
+	readonly transitionPreset: boolean | LightboxViewTransitionPreset | undefined;
+	/** Bumped by the owner before every open/close; a stale value aborts. */
+	readonly closeGen: number;
+	/**
+	 * flushSync body that MOUNTS the viewer in a hidden ("preparing") state.
+	 * Runs before `startViewTransition` so the expensive render and image
+	 * decode happen off the transition's render-suppressed path; the hidden tree
+	 * is absent from the old snapshot.
+	 */
+	commitPrepare(): void;
+	/**
+	 * flushSync body that reveals the prepared tree and marks the lightbox open.
+	 * Runs inside the transition callback; a cheap paint-only flip (no mount).
+	 */
+	commitReveal(): void;
+	/**
+	 * flushSync body that tears down a prepare that never revealed (superseded
+	 * open or `onBeforeOpen` failure).
+	 */
+	commitAbortPrepare(): void;
+	/** flushSync body that hides the viewer; unmount waits for onCloseComplete. */
+	commitClose(): void;
+	/** Fired once the open morph settles (and its generation is still current). */
+	onOpenComplete(): void;
+	/**
+	 * Fired once the close morph settles (and its generation is still current).
+	 * Receives the resolved trigger element so the caller can restore focus.
+	 */
+	onCloseComplete(triggerEl: HTMLElement | undefined): void;
+	/**
+	 * Active slide zoom controls. On Firefox close morph, calls `reset(true)`
+	 * when zoomed so the old VT snapshot captures resting (unclipped) Media.
+	 */
+	readonly activeZoom: {
+		reset: (rapid?: boolean) => void;
+		getZoom: () => number;
+	} | null;
+}
+
+interface ViewTransitionMorph {
+	open: () => void;
+	close: () => void;
+}
+
+/**
+ * Encapsulates the trigger <-> item View Transition morph mechanics for the
+ * lightbox. It owns the `startViewTransition` call, the document-level morph
+ * state, the `flushSync` timing, and the generation-guarded completion — but
+ * leaves ownership of component state and lifecycle callbacks to the host via
+ * `commitOpen`/`commitClose`/`onOpenComplete`/`onCloseComplete`.
+ *
+ * The caller is expected to bump `closeGen` immediately before
+ * invoking `open()`/`close()` so each morph captures a fresh generation.
+ *
+ * Root lazy-loads this module and constructs one instance per lightbox.
+ */
+function createViewTransitionMorph(host: MorphHost): ViewTransitionMorph {
+	const open = async () => {
+		const docEl = document.documentElement;
+		const gen = host.closeGen;
+
+		// Swallow touch panning for the whole open morph — from prepare (viewer
+		// hidden, page not yet locked) through the transition itself, when hit
+		// testing resolves to <html> and an upward pan would expand iOS Safari's
+		// address bar, resizing the viewport mid-morph. Idempotent; released on
+		// every bail path below and in the finished finalizer.
+		const releaseTouchGuard = acquireVtTouchGuard();
+
+		// Fresh controller for this open attempt; Root aborts it when gen bumps.
+		const beforeOpenAbort = new AbortController();
+		host.beforeOpenAbort = beforeOpenAbort;
+
+		const triggerIdx = host.openingTriggerIndex;
+		// Prefer the exact origin element (click / handle.triggerId) over the
+		// index map — last-registered wins in the map when indexes collide.
+		const triggerEl =
+			host.openingTriggerElement ?? host.triggerElements.get(triggerIdx) ?? undefined;
+		const triggerTarget = triggerEl
+			? findTriggerMorphTarget(triggerEl, host.triggerMorphElements)
+			: null;
+		const useCrossfade = shouldUseCrossfade(triggerEl?.dataset.crossfade, 'opening');
+
+		// Read the trigger's border-radius NOW, before any writes. At this point the
+		// page is idle (the click's state changes haven't flushed to the DOM
+		// yet), so this read is served from clean style — no forced reflow.
+		// Reading it later (after commitPrepare) would force a full style+layout
+		// flush. Resolved to interpolatable px (handles
+		// `rounded-full` / infinity / %).
+		const fromRadius = triggerTarget ? resolveMorphBorderRadius(triggerTarget) : null;
+
+		// PRE-MOUNT (Guideline #3): build the viewer + gallery NOW, while the page
+		// is still live and interactive, so the heavy mount and the
+		// destination image's fetch/decode happen OFF the transition's
+		// render-suppressed critical path. The tree mounts `visibility: hidden`
+		// (see LightboxContent/Backdrop `preparing`), so it doesn't paint into the
+		// old snapshot captured below. The transition callback then only has to
+		// flip it visible — no mount — so the morph starts promptly instead of the
+		// screen freezing on the old snapshot for the duration of the mount.
+		flushSync(host.commitPrepare);
+
+		// Whether an await below let real time (and rendered frames) pass since
+		// the mount — decides how many frames the heavy-document pre-capture
+		// yield needs (see afterNextRenderFrame).
+		let waitedSinceMount = false;
+
+		// Wait for the destination image to decode HERE — before starting the
+		// transition — rather than inside the update callback. Awaiting inside the
+		// callback makes it an *async* callback: the browser reveals the new DOM
+		// (via `commitReveal`) but hasn't captured the "new" snapshot yet, so it
+		// paints that half-updated state for a frame before the transition's
+		// pseudo-elements take over — the one-frame flash of empty space on open.
+		//
+		// Doing the wait now keeps the trigger fully painted and interactive on
+		// screen for the (bounded) duration, and — crucially — lets the update
+		// callback stay SYNCHRONOUS, so the browser captures old -> runs the
+		// callback -> captures new in a single uninterrupted rendering update with
+		// no intermediate paint. Bounded by `decodeMaxWait`; skipped entirely when
+		// the consumer opts out (awaitImageDecode={false}).
+		if (host.decodeMaxWait > 0) {
+			const pendingItemEl = host.activeItemElement;
+			// Decode waits on the item (Media / image), not a shared Stage surface.
+			const pendingItemTarget = pendingItemEl
+				? findItemMorphTarget(pendingItemEl, host.itemMorphElements)
+				: null;
+			// Only actually await when the destination image is still loading. When
+			// it's cached (or there's no image), skip the await so the open path stays
+			// synchronous and the transition starts on the same tick as the click — no
+			// microtask deferral, no perceptible lag. (The trigger-thumbnail bridge no
+			// longer needs its own decode priming here: `Lightbox.Item` now paints it
+			// into a <canvas>, a pre-rasterized bitmap with no async decode — see the
+			// placeholder effect in lightbox-item.)
+			if (getPendingDecodeImage(pendingItemTarget)) {
+				await waitForImageDecode(pendingItemTarget, host.decodeMaxWait);
+				waitedSinceMount = true;
+				// A newer open/close superseded this one during the await — bail before
+				// touching any document-level morph state so we don't corrupt it.
+				if (host.closeGen !== gen) {
+					if (host.beforeOpenAbort === beforeOpenAbort) {
+						host.beforeOpenAbort = null;
+					}
+					releaseTouchGuard();
+					return;
+				}
+			}
+		}
+
+		// Consumer escape hatch: await custom readiness (iframe / video / GLTF)
+		// after prepare + optional decode, still BEFORE startViewTransition so the
+		// VT update callback stays synchronous (same flash-avoidance as decode).
+		const onBeforeOpen = host.onBeforeOpen;
+		if (onBeforeOpen) {
+			const pendingItemEl = host.activeItemElement;
+			const destination = findDestinationMorphTarget(
+				pendingItemEl,
+				host.itemMorphElements,
+				host.destinationMorphElement
+			);
+			try {
+				await onBeforeOpen({ destination, signal: beforeOpenAbort.signal });
+				waitedSinceMount = true;
+			} catch {
+				// Ignore abort / consumer errors — tear down prepare if this open is
+				// still current; a superseding open/close already owns the tree.
+				if (host.beforeOpenAbort === beforeOpenAbort) {
+					host.beforeOpenAbort = null;
+				}
+				if (host.closeGen === gen) {
+					flushSync(host.commitAbortPrepare);
+				}
+				releaseTouchGuard();
+				return;
+			}
+			if (host.beforeOpenAbort === beforeOpenAbort) {
+				host.beforeOpenAbort = null;
+			}
+			if (host.closeGen !== gen) {
+				releaseTouchGuard();
+				return;
+			}
+			// Aborted without throw (signal only) — same cleanup as supersede.
+			if (beforeOpenAbort.signal.aborted) {
+				flushSync(host.commitAbortPrepare);
+				releaseTouchGuard();
+				return;
+			}
+		} else if (host.beforeOpenAbort === beforeOpenAbort) {
+			host.beforeOpenAbort = null;
+		}
+
+		// Don't capture while Android Chrome's URL bar is still moving. Desktop
+		// and WebKit skip this — they don't share that snapshot-root abort.
+		if (shouldWaitForSnapshotRootSettle()) {
+			await waitForStableSnapshotRoot();
+			waitedSinceMount = true;
+			if (host.closeGen !== gen) {
+				flushSync(host.commitAbortPrepare);
+				releaseTouchGuard();
+				return;
+			}
+		}
+
+		// Heavy documents: hand the capture to a rAF callback instead of running
+		// it in the click task (see vt-capture-yield.ts). Two frames when the
+		// mount above is still undigested (fully-synchronous path: cached image,
+		// no consumer wait) so the engine renders the hidden tree once before
+		// capture; one frame when an await already let frames pass. Also places
+		// the reads below in a clean-style frame instead of force-flushing the
+		// mount's pending invalidation in the click task.
+		if (shouldYieldBeforeCapture()) {
+			await afterNextRenderFrame(waitedSinceMount ? 1 : 2);
+			// Same supersede semantics as the decode await: a newer open/close owns
+			// the tree — bail before touching document-level morph state.
+			if (host.closeGen !== gen) {
+				releaseTouchGuard();
+				return;
+			}
+		}
+
+		// Read the destination item's border-radius here, after the mount. The
+		// slides' mount effect (measureSlidesGeometry) has already forced layout during
+		// commitPrepare above, so style/layout are clean and this read is cheap —
+		// and it lets the transition callback below stay pure-writes (no reads),
+		// which avoids a forced reflow *inside* the render-suppressed VT callback.
+		// Radius is unaffected by the `visibility: hidden` prepare state.
+		const itemElPrep = host.activeItemElement;
+		const itemTargetPrep = findDestinationMorphTarget(
+			itemElPrep,
+			host.itemMorphElements,
+			host.destinationMorphElement
+		);
+
+		// Decide whether to morph. A morph needs both a trigger (the "old" group)
+		// and a destination whose size we can resolve (the "new" group). If the
+		// destination image never loaded/decoded within the timeout its box is 0×0,
+		// and morphing the trigger into it just shrinks it into the corner/center.
+		// In that case, skip the morph and fall back to a plain root crossfade.
+		const canMorph = !!triggerTarget && isMorphTargetSizeResolvable(itemTargetPrep);
+
+		// Dev nudge: a morph into the bare item container means the consumer forgot
+		// to designate a morph target (`image` / `morph`). Skip when Stage
+		// `morph` owns the capture destination.
+		if (canMorph && itemElPrep && itemTargetPrep === itemElPrep) {
+			warnUnwiredItemMorph(itemElPrep, itemTargetPrep);
+		}
+		if (!canMorph) {
+			warnCollapsedMediaMorph(itemTargetPrep);
+		}
+
+		// Read the destination radius only when morphing (style/layout are already
+		// flushed by the mount, so it's cheap and keeps the VT callback read-free).
+		// Radius is unaffected by the `visibility: hidden` prepare state.
+		const toRadius = canMorph ? resolveMorphBorderRadius(itemTargetPrep!) : null;
+
+		// In the fallback we force the root crossfade on (`data-ramka-crossfade`)
+		// and set no morph name/radius, so the transition is a clean fade.
+		const morphStateToken = applyMorphState(docEl, 'opening', {
+			useCrossfade: canMorph ? useCrossfade : true,
+			fromRadius: canMorph ? fromRadius : null,
+			toRadius,
+			preset: host.transitionPreset
+		});
+
+		if (canMorph) {
+			// Inline `!important` so the document-level isolation rule (which sets
+			// `view-transition-name: none !important` on every element during the
+			// morph) can't neutralize the one element we actually want captured.
+			// Shape (border-radius) is owned entirely by the VT group CSS + the
+			// from/to vars written above — we never mutate live element radii.
+			setMorphName(triggerTarget!);
+		}
+
+		// Restored after the open morph; applied inside the VT callback so only the
+		// "new" (destination) snapshot sees the Firefox full-bleed inset.
+		let restoreFirefoxCaptureInset: CaptureInsetRestore | null = null;
+
+		const transition = startViewTransition(() => {
+			if (canMorph) {
+				clearMorphName(triggerTarget!);
+			}
+			// Reveal the already-mounted tree (paint-only flip; no reconciliation).
+			// The backdrop + content are part of the root snapshot, which crossfades
+			// between the old and new states (see the VT CSS contract).
+			flushSync(host.commitReveal);
+
+			// Pure writes only — no layout reads — so the browser can capture the new
+			// snapshot without a forced reflow interrupting the transition.
+			// Exception: Firefox full-bleed capture inset (below) must measure + write
+			// before the new snapshot is taken.
+			const itemEl = host.activeItemElement;
+			if (canMorph) {
+				const itemTarget = findDestinationMorphTarget(
+					itemEl,
+					host.itemMorphElements,
+					host.destinationMorphElement
+				);
+				if (itemTarget) {
+					setMorphName(itemTarget);
+					restoreFirefoxCaptureInset = applyFirefoxFullBleedCaptureInset(itemTarget);
+				}
+			}
+			if (itemEl) {
+				itemEl.setAttribute('data-skip-fade', '');
+			}
+		});
+		if (canMorph) {
+			// The trigger element anchors the `from` endpoint against WebKit's
+			// broken capture geometry for triggers inside multicol (see
+			// correctFragmentedEndpoint in vt-composited-morph.ts).
+			maybeUpgradeToCompositedMorph(transition, { from: fromRadius, to: toRadius }, triggerTarget);
+		}
+
+		transition.finished.finally(() => {
+			releaseTouchGuard();
+			restoreFirefoxCaptureInset?.();
+			restoreFirefoxCaptureInset = null;
+			if (host.closeGen !== gen) return;
+			const itemEl = host.activeItemElement;
+			const itemTarget = findDestinationMorphTarget(
+				itemEl,
+				host.itemMorphElements,
+				host.destinationMorphElement
+			);
+			if (itemTarget) {
+				clearMorphName(itemTarget);
+			}
+			clearMorphState(docEl, morphStateToken);
+
+			// Reposition the active trigger while the viewer still covers the page
+			// (and scroll is locked), so a later close morph lands on-screen with no
+			// visible jump at close start. Invisible now; only pays off on close.
+			const openCompleteScroll = resolveScrollTriggerOption(
+				host.scrollTriggerIntoView,
+				'onOpenComplete'
+			);
+			if (openCompleteScroll) {
+				const idx = resolveTriggerIndex(
+					host.activeIndex,
+					host.morphTo,
+					host.openingTriggerIndex,
+					host.triggerElements
+				);
+				scrollTriggerEl(host.triggerElements.get(idx), openCompleteScroll);
+			}
+
+			host.onOpenComplete();
+		});
+	};
+
+	const close = () => {
+		const gen = host.closeGen;
+
+		// Same guard as the open morph: the portal is hidden until close
+		// `finished`, so a touch pan can resolve to <html> and expand Safari's
+		// address bar mid-morph. Acquired synchronously — before any yield — so
+		// the guard covers the frame(s) between the input and the capture too.
+		const releaseTouchGuard = acquireVtTouchGuard();
+
+		// Heavy documents: run the capture from a rAF callback instead of the
+		// input task (Escape / close-button click), so the old snapshot's paint +
+		// layerization land in a rendering task rather than blocking the input
+		// (see vt-capture-yield.ts). The viewer stays fully visible and
+		// unchanged for that one frame. One frame suffices — the open tree was
+		// rendered long ago; nothing is pending digestion.
+		if (shouldYieldBeforeCapture()) {
+			requestAnimationFrame(() => {
+				// A newer open/close superseded this close during the yield — it owns
+				// the document-level morph state now.
+				if (host.closeGen !== gen) {
+					releaseTouchGuard();
+					return;
+				}
+				runClose(gen, releaseTouchGuard);
+			});
+			return;
+		}
+		runClose(gen, releaseTouchGuard);
+	};
+
+	const runClose = (gen: number, releaseTouchGuard: () => void) => {
+		const docEl = document.documentElement;
+
+		const itemEl = host.activeItemElement;
+		const itemTarget = findDestinationMorphTarget(
+			itemEl,
+			host.itemMorphElements,
+			host.destinationMorphElement
+		);
+		const triggerIdx = resolveTriggerIndex(
+			host.activeIndex,
+			host.morphTo,
+			host.openingTriggerIndex,
+			host.triggerElements
+		);
+		const triggerEl = host.triggerElements.get(triggerIdx);
+		const triggerTarget = triggerEl
+			? findTriggerMorphTarget(triggerEl, host.triggerMorphElements)
+			: null;
+		// Mirror open: a morph needs both ends. Naming only the item (no trigger)
+		// lifts it out of the root snapshot so chrome fades while the photo sticks,
+		// then pops — e.g. controlled open with no Trigger. Fall back to a plain
+		// root crossfade instead.
+		const canMorph = !!triggerTarget && !!itemTarget;
+		const useCrossfade = canMorph
+			? shouldUseCrossfade(triggerEl?.dataset.crossfade, 'closing')
+			: true;
+
+		// Batch all reads before any writes to avoid forced reflow. Resolve to
+		// interpolatable px so `rounded-full` / % don't break the group animation.
+		const fromRadius = canMorph ? resolveMorphBorderRadius(itemTarget!) : null;
+		const toRadius = canMorph ? resolveMorphBorderRadius(triggerTarget!) : null;
+
+		// Writes — radii go to CSS vars; the VT group interpolates them (no live
+		// border-radius mutation).
+		const morphStateToken = applyMorphState(docEl, 'closing', {
+			useCrossfade,
+			fromRadius,
+			toRadius,
+			preset: host.transitionPreset
+		});
+
+		// Firefox: zoomed Media is painted under scale/pan and clipped by ancestor
+		// overflow into the named VT snapshot. Instant reset (replacePose) so the
+		// old snapshot is the resting, unclipped box. Chrome/Safari capture correctly
+		// while zoomed — leave their live pose alone. Animated reset() would leave
+		// capture mid-zoom.
+		if (isFirefox()) {
+			const activeZoom = host.activeZoom;
+			if (activeZoom && activeZoom.getZoom() > 1) {
+				activeZoom.reset(true);
+			}
+		}
+
+		// Inset before startViewTransition so the "old" (item) snapshot is not
+		// captured edge-to-edge — Firefox full-bleed VT bug. Order: zoom reset →
+		// inset → morph name → capture.
+		let restoreFirefoxCaptureInset: CaptureInsetRestore | null = null;
+		if (canMorph) {
+			restoreFirefoxCaptureInset = applyFirefoxFullBleedCaptureInset(itemTarget!);
+			setMorphName(itemTarget!);
+		}
+
+		const transition = startViewTransition(() => {
+			restoreFirefoxCaptureInset?.();
+			restoreFirefoxCaptureInset = null;
+			if (canMorph) {
+				clearMorphName(itemTarget!);
+			}
+			flushSync(host.commitClose);
+			const closeScroll = resolveScrollTriggerOption(host.scrollTriggerIntoView, 'onClose');
+			if (closeScroll) {
+				scrollTriggerEl(triggerEl, closeScroll);
+			}
+			if (canMorph) {
+				setMorphName(triggerTarget!);
+			}
+		});
+		if (canMorph) {
+			// The trigger element anchors the `to` endpoint against WebKit's broken
+			// capture geometry for triggers inside multicol (see
+			// correctFragmentedEndpoint in vt-composited-morph.ts).
+			maybeUpgradeToCompositedMorph(transition, { from: fromRadius, to: toRadius }, triggerTarget);
+		}
+
+		transition.finished.finally(() => {
+			releaseTouchGuard();
+			restoreFirefoxCaptureInset?.();
+			restoreFirefoxCaptureInset = null;
+			if (canMorph) {
+				clearMorphName(triggerTarget!);
+			}
+			clearMorphState(docEl, morphStateToken);
+			if (host.closeGen === gen) {
+				host.onCloseComplete(triggerEl);
+			}
+		});
+	};
+
+	return { open, close };
+}
+
+export {
+	createViewTransitionMorph,
+	startViewTransition,
+	waitForImageDecode,
+	scrollTriggerEl,
+	resolveTriggerIndex,
+	resolveScrollTriggerOption,
+	getFullBleedAxes,
+	isHorizontallyFullBleed,
+	isVerticallyFullBleed,
+	applyFirefoxFullBleedCaptureInset,
+	DEFAULT_DECODE_MAX_WAIT
+};
+export type { MorphHost, ViewTransitionMorph };
+export type {
+	ScrollTriggerIntoView,
+	ScrollTriggerOption,
+	ScrollTriggerMoment,
+	ScrollTriggerAlign,
+	ResolvedScrollTrigger
+} from './scroll-trigger';

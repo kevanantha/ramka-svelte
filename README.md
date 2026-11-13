@@ -1,0 +1,80 @@
+# ramka-svelte
+
+**The lightbox for Svelte.** A Svelte 5 port of [ramka](https://github.com/arturbien/ramka) by Artur Bień: unstyled, accessible gallery primitives with shared-element View Transitions and native scroll swiping.
+
+> _ramka_ — Polish for "frame".
+
+## Status
+
+Work in progress. Ported so far:
+
+- **Morph view transitions.** The original's morph engine (`use-view-transition-morph.ts`, composited morph, timing presets, name isolation, touch guard) runs unchanged, driven by Svelte's `flushSync`.
+- **Native scrolling.** `Slides` / `Slide` ride CSS scroll snapping, with the original's fling lock, `scrollend` settle and resize re-parking.
+- **Dialog shell.** `Root`, `Trigger`, `Portal`, `Backdrop`, `Content` (focus trap, Escape, arrow / Home / End keys, scrim click), `Close`.
+- **Media.** `Item` (preload window, tab/tabpanel or slide ARIA, canvas placeholder bridge), `Media` (fit-box sizing).
+- **Chrome.** `Previous`, `Next`, `Counter`, `Caption`, `ThumbnailGroup`, `Thumbnail`.
+
+Not ported yet: `Zoom` / `ZoomIn` / `ZoomOut` (pinch to zoom), pull to dismiss, `Stage`, `ThumbnailStrip`, `createHandle`, `CSPProvider`, the docs pages, presets and tests.
+
+## Usage
+
+```svelte
+<script lang="ts">
+	import * as Lightbox from 'ramka-svelte/lightbox';
+	let { items } = $props();
+</script>
+
+<Lightbox.Root>
+	{#each items as item, i}
+		<Lightbox.Trigger index={i}>
+			{#snippet children({ image })}
+				<img {@attach image} src={item.thumb} alt={item.alt} />
+			{/snippet}
+		</Lightbox.Trigger>
+	{/each}
+
+	<Lightbox.Portal>
+		<Lightbox.Backdrop />
+		<Lightbox.Content aria-label="Photo viewer">
+			<Lightbox.Slides aria-label="Photos">
+				{#each items as item, i}
+					<Lightbox.Slide>
+						<Lightbox.Item index={i} caption={item.caption}>
+							<Lightbox.Media width={item.width} height={item.height}>
+								<img src={item.src} alt={item.alt} />
+							</Lightbox.Media>
+						</Lightbox.Item>
+					</Lightbox.Slide>
+				{/each}
+			</Lightbox.Slides>
+			<Lightbox.Close aria-label="Close" />
+		</Lightbox.Content>
+	</Lightbox.Portal>
+</Lightbox.Root>
+```
+
+Differences from the React API:
+
+- `open` and `value` are bindable (`bind:open`, `bind:value`) instead of `open` / `defaultOpen` / `onOpenChange` pairs. The `onOpenChange`, `onOpenChangeComplete` and `onValueChange` callbacks still exist.
+- Render functions are snippets, and `imageRef` / `morphRef` are attachments named `image` / `morph`: `{@attach image}` instead of `ref={imageRef}`.
+- Parts take a bindable `ref` (`bind:ref`) for their element, and wrappers read state with `getLightboxContext()` (built on `createContext`, so Svelte ≥ 5.40).
+- `Media` resolves its fit-box against the nearest size container. Until `Zoom` is ported, give the `Item` `container-type: size` (the docs viewer does).
+
+## Development
+
+This is a pnpm workspace:
+
+- [`packages/ramka`](./packages/ramka): the library (`ramka-svelte`), built with `svelte-package`.
+- [`apps/docs`](./apps/docs): the SvelteKit + Tailwind v4 site, built with `adapter-static`.
+
+```bash
+pnpm install
+pnpm build   # package the library, then build the docs site
+pnpm check   # svelte-check both workspaces
+```
+
+`.amp/services.yaml` runs the docs dev server. The docs import the library from `packages/ramka/src/lib` (a SvelteKit alias), so library edits hot-reload without packaging.
+
+## License
+
+[MIT](./LICENSE), same as the original. Demo photos come from the original docs (Unsplash license via picsum.photos).

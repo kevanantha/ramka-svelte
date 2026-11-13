@@ -1,0 +1,65 @@
+{
+	"name": "ramka-svelte",
+	"version": "0.0.0",
+	"description": "Unstyled, accessible lightbox primitives for Svelte 5. A port of ramka (\"ramka\" — Polish for \"frame\").",
+	"license": "MIT",
+	"type": "module",
+	"keywords": [
+		"svelte",
+		"lightbox",
+		"image-gallery",
+		"gallery",
+		"carousel",
+		"view-transitions",
+		"headless",
+		"unstyled",
+		"accessible"
+	],
+	"files": [
+		"dist",
+		"!dist/**/*.test.*",
+		"!dist/**/*.spec.*"
+	],
+	"sideEffects": false,
+	"svelte": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"svelte": "./dist/index.js"
+		},
+		"./lightbox": {
+			"types": "./dist/lightbox/index.d.ts",
+			"svelte": "./dist/lightbox/index.js"
+		}
+	},
+	"scripts": {
+		"package": "svelte-kit sync && svelte-package",
+		"dev": "svelte-kit sync && svelte-package --watch",
+		"prepack": "svelte-kit sync && svelte-package && publint",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"lint": "prettier --check .",
+		"format": "prettier --write .",
+		"test": "vitest --run"
+	},
+	"dependencies": {
+		"esm-env": "^1.2.2"
+	},
+	"peerDependencies": {
+		"svelte": "^5.40.0"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-auto": "^8.0.0",
+		"@sveltejs/kit": "^3.0.0",
+		"@sveltejs/package": "^2.5.8",
+		"@sveltejs/vite-plugin-svelte": "^7.2.0",
+		"prettier": "^3.8.3",
+		"prettier-plugin-svelte": "^4.1.0",
+		"publint": "^0.3.21",
+		"svelte": "^5.57.2",
+		"svelte-check": "^4.6.0",
+		"typescript": "^6.0.3",
+		"vite": "^8.3.0",
+		"vitest": "^4.1.8"
+	}
+}
