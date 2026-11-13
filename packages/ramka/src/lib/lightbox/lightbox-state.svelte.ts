@@ -41,6 +41,12 @@ import {
 	scrollTriggerEl,
 	type ScrollTriggerIntoView
 } from './scroll-trigger';
+import {
+	bindLightboxHandle,
+	getHandleTrigger,
+	type LightboxHandle,
+	type LightboxHandleOpenOptions
+} from './lightbox-handle.svelte';
 import type { SlidesGeometry } from './lightbox-slides-geometry';
 import type { TextDirection } from './lightbox-direction';
 import type { LightboxViewTransitionPreset } from './vt-timing';
@@ -118,6 +124,14 @@ export interface LightboxStateProps {
 	readonly morphTo: 'active' | 'origin' | 'closest';
 	readonly scrollTriggerIntoView: ScrollTriggerIntoView;
 	readonly awaitImageDecode: boolean | number;
+}
+
+/** A Trigger with an `id`, as `handle.open(index, { triggerId })` resolves it. */
+export interface TriggerIdEntry {
+	id: string;
+	index: number;
+	element: HTMLElement | null;
+	image: HTMLImageElement | null;
 }
 
 let instanceCounter = 0;
@@ -214,6 +228,8 @@ export class LightboxState {
 	readonly triggerMorphElements = new WeakMap<HTMLElement, HTMLElement>();
 	/** Index → trigger `<img>`, the placeholder source for that item. */
 	readonly triggerImageElements = new Map<number, HTMLImageElement>();
+	/** Trigger `id` → its registration, for `handle.open(i, { triggerId })`. */
+	readonly triggerIds = new Map<string, TriggerIdEntry>();
 	openingTriggerImage: HTMLImageElement | null = null;
 	activeItemElement: HTMLElement | null = null;
 	/** Item → its designated morph descendant (`morph` → Media → image). */
@@ -357,6 +373,98 @@ export class LightboxState {
 		this.openingTriggerImage = image;
 		this.setActiveIndex(index, 'trigger');
 		this.setOpen(true);
+	}
+
+	// ── Imperative handle (`createHandle`) ──────────────────────────────────
+
+	#handle: LightboxHandle | null = null;
+
+	/**
+	 * `handle.open(index, { triggerId })`. Resolves the trigger (handle
+	 * registry first, then this Root's id map) so the morph, placeholder and
+	 * focus return use that element; without one, the trigger registered at
+	 * the index stands in.
+	 */
+	openImperatively(index?: number, options?: LightboxHandleOpenOptions): void {
+		let resolvedIndex = index;
+		let element: HTMLElement | null = null;
+		let image: HTMLImageElement | null = null;
+
+		if (options?.triggerId) {
+			const reg =
+				(this.#handle ? getHandleTrigger(this.#handle, options.triggerId) : undefined) ??
+				this.triggerIds.get(options.triggerId);
+			if (reg) {
+				resolvedIndex = index ?? reg.index;
+				element = reg.element;
+				image = reg.image;
+			} else if (DEV) {
+				console.warn(`Lightbox open: no trigger registered with id "${options.triggerId}".`);
+			}
+		}
+
+		if (resolvedIndex !== undefined) {
+			this.openingTriggerIndex = resolvedIndex;
+			this.setActiveIndex(resolvedIndex, 'imperative');
+		}
+		if (element) {
+			this.openingTriggerElement = element;
+			this.openingTriggerImage = image;
+		} else if (resolvedIndex !== undefined) {
+			this.openingTriggerElement = this.triggerElements.get(resolvedIndex) ?? null;
+			this.openingTriggerImage = this.triggerImageElements.get(resolvedIndex) ?? null;
+		} else {
+			this.openingTriggerElement = null;
+			this.openingTriggerImage = null;
+		}
+
+		if (this.viewTransition) prefetchMorphRuntime();
+		this.setOpen(true);
+	}
+
+	/**
+	 * Bind this Root as `handle`'s host. Registrations from Triggers using the
+	 * handle (detached or not) are mirrored into this Root's registries.
+	 * Returns the unbind.
+	 */
+	bindHandle(handle: LightboxHandle): () => void {
+		const state = this;
+		this.#handle = handle;
+		const unbind = bindLightboxHandle(handle, {
+			open: (index, options) => state.openImperatively(index, options),
+			close: () => state.setOpen(false),
+			goTo: (index) => state.setActiveIndex(index, 'imperative'),
+			get isOpen() {
+				return state.open;
+			},
+			get activeIndex() {
+				return state.activeIndex;
+			},
+			syncTrigger(reg) {
+				const { id, index, element, image, morphElement } = reg;
+				state.triggerIds.set(id, { id, index, element, image });
+				if (element) {
+					state.triggerElements.set(index, element);
+					if (morphElement) state.triggerMorphElements.set(element, morphElement);
+					else state.triggerMorphElements.delete(element);
+				}
+				if (image) state.triggerImageElements.set(index, image);
+			},
+			unsyncTrigger(reg) {
+				if (state.triggerIds.get(reg.id)?.element === reg.element) state.triggerIds.delete(reg.id);
+				if (reg.element && state.triggerElements.get(reg.index) === reg.element) {
+					state.triggerElements.delete(reg.index);
+					state.triggerMorphElements.delete(reg.element);
+				}
+				if (reg.image && state.triggerImageElements.get(reg.index) === reg.image) {
+					state.triggerImageElements.delete(reg.index);
+				}
+			}
+		});
+		return () => {
+			unbind();
+			if (this.#handle === handle) this.#handle = null;
+		};
 	}
 
 	// ── Open / close ─────────────────────────────────────────────────────────
@@ -650,4 +758,9 @@ export function getLightboxContext(): LightboxState {
 		throw new Error('Lightbox compound components must be used within a Lightbox.Root');
 	}
 	return getContext();
+}
+
+/** The enclosing Root's state, or `undefined` (a detached Trigger with a handle). */
+export function getOptionalLightboxContext(): LightboxState | undefined {
+	return hasContext() ? getContext() : undefined;
 }

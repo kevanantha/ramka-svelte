@@ -10,3 +10,4 @@ export { getLightboxZoomContext } from './lightbox/LightboxZoom.svelte';
 export type { LightboxTriggerRenderState } from './lightbox/LightboxTrigger.svelte';
 export type { LightboxItemContext } from './lightbox/LightboxItem.svelte';
 export type { LightboxStageRenderState } from './lightbox/LightboxStage.svelte';
+export type { LightboxHandle, LightboxHandleOpenOptions } from './lightbox/lightbox-handle.svelte';

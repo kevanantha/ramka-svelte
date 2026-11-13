@@ -8,10 +8,16 @@
 	import type { ScrollTriggerIntoView } from './scroll-trigger';
 	import type { TextDirection } from './lightbox-direction';
 	import type { LightboxViewTransitionPreset } from './vt-timing';
+	import type { LightboxHandle } from './lightbox-handle.svelte';
 
 	export interface LightboxRootProps {
 		/** Lightbox parts and page content (triggers usually live inside Root). */
 		children?: Snippet;
+		/**
+		 * Imperative handle from `Lightbox.createHandle()`. Pass the same handle
+		 * to detached `Lightbox.Trigger`s outside this Root.
+		 */
+		handle?: LightboxHandle;
 		/** Open state. Bindable: `bind:open`. @default false */
 		open?: boolean;
 		/** Called when open state changes, before enter/exit animations finish. */
@@ -53,10 +59,12 @@
 </script>
 
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { LightboxState, setLightboxContext } from './lightbox-state.svelte';
 
 	let {
 		children,
+		handle,
 		open = $bindable(false),
 		onOpenChange,
 		onOpenChangeComplete,
@@ -125,6 +133,14 @@
 	});
 	state.connect();
 	setLightboxContext(state);
+
+	// Bind a `createHandle()` handle for this Root's lifetime (before paint, so
+	// a handle call from a sibling's mount effect already reaches the Root).
+	$effect.pre(() => {
+		const h = handle;
+		if (!h) return;
+		return untrack(() => state.bindHandle(h));
+	});
 </script>
 
 {@render children?.()}

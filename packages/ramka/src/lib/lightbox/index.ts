@@ -14,6 +14,9 @@
  * Every part is unstyled; state is exposed as data attributes
  * (`data-open`, `data-active`, `data-disabled`, …) for your CSS.
  */
+export { createHandle } from './lightbox-handle.svelte';
+export type { LightboxHandle, LightboxHandleOpenOptions } from './lightbox-handle.svelte';
+
 export { default as Root } from './LightboxRoot.svelte';
 export { default as Trigger } from './LightboxTrigger.svelte';
 export { default as Portal } from './LightboxPortal.svelte';

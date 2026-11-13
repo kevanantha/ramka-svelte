@@ -2,6 +2,7 @@
 	import { createContext, type Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import type { HTMLButtonAttributes } from 'svelte/elements';
+	import type { LightboxHandle } from './lightbox-handle.svelte';
 
 	/** Direction(s) in which the trigger↔item morph crossfades snapshots. */
 	export type LightboxCrossfade = 'open' | 'close' | 'both';
@@ -31,6 +32,17 @@
 		/** Item index this trigger opens. */
 		index: number;
 		/**
+		 * Stable id for this trigger, also applied as the DOM `id`. Needed for
+		 * `handle.open(index, { triggerId })` to associate an open with it.
+		 */
+		id?: string;
+		/**
+		 * Handle from `Lightbox.createHandle()`. Pass the same handle as Root to
+		 * use this Trigger outside the Root tree (Base UI Dialog-style detached
+		 * triggers).
+		 */
+		handle?: LightboxHandle;
+		/**
 		 * Crossfade trigger and item snapshots during the morph. Omit for a
 		 * hard-cut morph (trigger and item show the same image).
 		 */
@@ -51,7 +63,14 @@
 </script>
 
 <script lang="ts">
-	import { getLightboxContext } from './lightbox-state.svelte';
+	import { untrack } from 'svelte';
+	import { getOptionalLightboxContext } from './lightbox-state.svelte';
+	import {
+		getLightboxHandleHost,
+		registerHandleTrigger,
+		touchHandleTrigger,
+		type LightboxHandleTriggerRegistration
+	} from './lightbox-handle.svelte';
 	import { prefetchMorphRuntime } from './lightbox-morph-loader';
 	import { prefetchZoomRuntime } from './lightbox-zoom-loader';
 	import { prefetchPullRuntime } from './lightbox-pull-loader';
@@ -61,6 +80,8 @@
 
 	let {
 		index,
+		id,
+		handle,
 		crossfade,
 		children,
 		ref = $bindable(null),
@@ -71,17 +92,30 @@
 		...rest
 	}: LightboxTriggerProps = $props();
 
-	const lightbox = getLightboxContext();
+	// Under a Root, the Root's state. Detached (outside any Root), the state of
+	// the Root bound to `handle`, read through the handle.
+	const lightbox = getOptionalLightboxContext();
+	if (!lightbox && !untrack(() => handle)) {
+		throw new Error(
+			'Lightbox.Trigger must be used within a Lightbox.Root, or passed a handle from Lightbox.createHandle()'
+		);
+	}
+	const host = $derived(!lightbox && handle ? getLightboxHandleHost(handle) : null);
 
 	const element = $derived(ref);
-	let imageNode: HTMLImageElement | null = null;
+	let imageNode = $state.raw<HTMLImageElement | null>(null);
 	let morphNode = $state<HTMLElement | null>(null);
 
-	const open = $derived(lightbox.open);
-	const active = $derived(lightbox.open && lightbox.activeIndex === index);
+	const open = $derived(lightbox ? lightbox.open : (host?.isOpen ?? false));
+	const active = $derived(
+		open && (lightbox ? lightbox.activeIndex : (host?.activeIndex ?? 0)) === index
+	);
 
 	/** Whether this trigger is the morph source for the current state. */
 	const morphTarget = $derived.by(() => {
+		// A detached trigger can't resolve the Root's registries: its own
+		// active state stands in.
+		if (!lightbox) return active;
 		if (!lightbox.open) return false;
 		const activeIndex = lightbox.activeIndex;
 		const morphTo = lightbox.morphTo;
@@ -103,11 +137,57 @@
 		return activeIndex === index;
 	});
 
+	// Handle registration (detached or not), so `handle.open(i, { triggerId })`
+	// and a detached trigger's morph resolve to this element.
+	const uid = $props.id();
+	const handleTriggerId = $derived(id ?? uid);
+	let handleRegistration: LightboxHandleTriggerRegistration | null = null;
+	$effect.pre(() => {
+		const h = handle;
+		if (!h) return;
+		const reg: LightboxHandleTriggerRegistration = {
+			id: handleTriggerId,
+			index,
+			element: null,
+			image: null,
+			morphElement: null
+		};
+		handleRegistration = reg;
+		const unregister = registerHandleTrigger(h, reg);
+		return () => {
+			if (handleRegistration === reg) handleRegistration = null;
+			unregister();
+		};
+	});
+	$effect.pre(() => {
+		const h = handle;
+		const reg = handleRegistration;
+		// Read every tracked field before bailing, so later changes re-sync.
+		const nodes = { element, image: imageNode, morphElement: morphNode };
+		void handleTriggerId;
+		void index;
+		if (!h || !reg) return;
+		Object.assign(reg, nodes);
+		touchHandleTrigger(h, reg);
+	});
+
+	// Under a Root, an `id` also registers here for `handle.open` lookups.
+	$effect(() => {
+		const triggerId = id;
+		const ids = lightbox?.triggerIds;
+		if (!triggerId || !ids) return;
+		const entry = { id: triggerId, index, element, image: imageNode };
+		ids.set(triggerId, entry);
+		return () => {
+			if (ids.get(triggerId) === entry) ids.delete(triggerId);
+		};
+	});
+
 	// Register in the index-keyed trigger registry (last-registered wins).
 	$effect(() => {
 		const el = element;
 		const i = index;
-		if (!el) return;
+		if (!el || !lightbox) return;
 		const registry = lightbox.triggerElements;
 		registry.set(i, el);
 		return () => {
@@ -121,7 +201,7 @@
 	$effect(() => {
 		const el = element;
 		const node = morphNode;
-		if (!el) return;
+		if (!el || !lightbox) return;
 		const registry = lightbox.triggerMorphElements;
 		if (node) registry.set(el, node);
 		else registry.delete(el);
@@ -143,11 +223,11 @@
 	const image: Attachment<HTMLImageElement> = (node) => {
 		imageNode = node;
 		const i = index;
-		const registry = lightbox.triggerImageElements;
-		registry.set(i, node);
+		const registry = lightbox?.triggerImageElements;
+		registry?.set(i, node);
 		return () => {
 			if (imageNode === node) imageNode = null;
-			if (registry.get(i) === node) registry.delete(i);
+			if (registry?.get(i) === node) registry.delete(i);
 		};
 	};
 
@@ -160,7 +240,7 @@
 
 	// Intent warm-up: hover, focus and pointerdown all prefetch the morph chunk.
 	function warmEngines() {
-		if (lightbox.viewTransition) prefetchMorphRuntime();
+		if (lightbox?.viewTransition) prefetchMorphRuntime();
 		prefetchZoomRuntime();
 		prefetchPullRuntime();
 	}
@@ -177,9 +257,10 @@
 	};
 	setTriggerContext(renderState);
 
-	// `aria-expanded` only on the trigger that actually opened the dialog.
+	// `aria-expanded` only on the trigger that actually opened the dialog. A
+	// detached trigger can't track the origin: it falls back to the open state.
 	const openedByThisTrigger = $derived(
-		open && element !== null && lightbox.openingTriggerElement === element
+		lightbox ? open && element !== null && lightbox.openingTriggerElement === element : open
 	);
 </script>
 
@@ -188,7 +269,8 @@
 	type="button"
 	aria-haspopup="dialog"
 	aria-expanded={openedByThisTrigger}
-	aria-controls={open ? `${lightbox.baseId}-content` : undefined}
+	aria-controls={open && lightbox ? `${lightbox.baseId}-content` : undefined}
+	{id}
 	data-ramka-trigger=""
 	data-popup-open={open ? '' : undefined}
 	data-active={active ? '' : undefined}
@@ -197,7 +279,9 @@
 	onclick={(event) => {
 		onclick?.(event);
 		if (event.defaultPrevented) return;
-		lightbox.openFromTrigger(index, element, imageNode);
+		if (lightbox) lightbox.openFromTrigger(index, element, imageNode);
+		// Detached: open through the shared handle (associates this element).
+		else handle?.open(index, { triggerId: handleTriggerId });
 	}}
 	onpointerenter={(event) => {
 		onpointerenter?.(event);
