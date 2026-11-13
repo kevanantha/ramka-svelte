@@ -18,15 +18,6 @@
 		ref?: HTMLDivElement | null;
 	}
 
-	const MEDIA_FILL_MARKER = 'data-ramka-media-fill';
-	// `:not(#_)` lifts specificity above utility classes on the child.
-	const MEDIA_FILL_HOST = '[data-ramka-media]:not(#_)';
-	const MEDIA_FILL_CSS =
-		`${MEDIA_FILL_HOST} > img:not([data-ramka-media-poster]),` +
-		`${MEDIA_FILL_HOST} > video,${MEDIA_FILL_HOST} > canvas{` +
-		`width:100%;height:100%;min-width:0;min-height:0;` +
-		`}`;
-
 	function dimsFromImg(img: HTMLImageElement): { width: number; height: number } | null {
 		const w = Number(img.getAttribute('width')) || img.naturalWidth;
 		const h = Number(img.getAttribute('height')) || img.naturalHeight;
@@ -38,6 +29,7 @@
 	import { untrack } from 'svelte';
 	import { getLightboxItemContext } from './LightboxItem.svelte';
 	import { ensureLibrarySheet } from './vt-style-sheets';
+	import { MEDIA_FILL_CSS, MEDIA_FILL_MARKER } from './media-fill';
 
 	let {
 		width: widthProp,

@@ -53,7 +53,7 @@
 
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { DEV } from 'esm-env';
+	import { BROWSER, DEV } from 'esm-env';
 	import { getLightboxContext } from './lightbox-state.svelte';
 	import { getSlidesPreload } from './LightboxSlides.svelte';
 	import { tryPaintCanvasPlaceholder } from './lightbox-placeholder';
@@ -285,6 +285,7 @@
 		data-ramka-item=""
 		data-active={active ? '' : undefined}
 		data-index={index}
+		data-ssr-active={!BROWSER && active ? '' : undefined}
 	>
 		{@render children?.({ active, visible, index, image, morph })}
 	</div>

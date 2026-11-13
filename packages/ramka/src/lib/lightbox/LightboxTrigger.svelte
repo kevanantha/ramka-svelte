@@ -64,6 +64,7 @@
 
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { BROWSER } from 'esm-env';
 	import { getOptionalLightboxContext } from './lightbox-state.svelte';
 	import {
 		getLightboxHandleHost,
@@ -262,6 +263,18 @@
 	const openedByThisTrigger = $derived(
 		lightbox ? open && element !== null && lightbox.openingTriggerElement === element : open
 	);
+
+	// SERVER PAINT ONLY: a server-rendered open lightbox would otherwise paint
+	// its active trigger un-hidden until hydration. The trigger root is the
+	// best stand-in the server knows about (a `morph` node only attaches on the
+	// client); hydration removes it and the morph-target effect above puts the
+	// attribute on the resolved element before the next paint. Stamped from
+	// `active`, not `morphTarget`: the `closest` resolver walks a registry
+	// that is empty on the server. `origin` stays unstamped (no opening
+	// trigger on a server-rendered page).
+	const serverMorphTarget = $derived(
+		!BROWSER && active && lightbox?.morphTo !== 'origin' ? '' : undefined
+	);
 </script>
 
 <button
@@ -275,6 +288,7 @@
 	data-popup-open={open ? '' : undefined}
 	data-active={active ? '' : undefined}
 	data-crossfade={crossfade}
+	data-morph-target={serverMorphTarget}
 	{...rest}
 	onclick={(event) => {
 		onclick?.(event);

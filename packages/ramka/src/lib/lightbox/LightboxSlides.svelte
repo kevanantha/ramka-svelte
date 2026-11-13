@@ -9,6 +9,25 @@
 		 * extent is correct. @default 1
 		 */
 		preload?: number;
+		/**
+		 * First-paint slide positioning for pages that SERVER-RENDER an open
+		 * lightbox (deep links rendering `Portal container={null}`). A scroll
+		 * offset cannot be serialized into HTML, so such pages otherwise paint
+		 * slide 0 (or a blank past the `preload` window) until hydration. While
+		 * on, the server HTML translates every slide by
+		 * `activeIndex × (100% + gap)` so the active slide occupies the
+		 * scrollport at offset 0; hydration drops the transform and the real
+		 * scroll offset lands before the next paint — no flash, every browser.
+		 *
+		 * ONLY for scrollport-wide slides: the percentage resolves against each
+		 * slide's own width, so content-sized (snug) slides would shift by
+		 * unequal distances. If the track has a `gap`, mirror it into
+		 * `--lightbox-ssr-slide-gap` (see `LightboxSlidesCssVars`). Without the
+		 * opt-in, engines with `scroll-initial-target` still position any layout
+		 * natively; others keep the hydration jump. Client-side opens are never
+		 * affected. @default false
+		 */
+		ssrSlideShift?: boolean;
 		ref?: HTMLDivElement | null;
 	}
 
@@ -45,9 +64,12 @@
 	} from './lightbox-slides-geometry';
 	import { readInlineScroll, writeInlineScroll } from './lightbox-direction';
 	import { isFirefox } from './is-firefox';
+	import { BROWSER } from 'esm-env';
+	import { LightboxSlidesCssVars } from './lightbox-css-vars';
 
 	let {
 		preload = 1,
+		ssrSlideShift = false,
 		ref = $bindable(null),
 		style,
 		children,
@@ -83,6 +105,23 @@
 			el.style.scrollSnapType = SLIDES_SCROLL_SNAP_TYPE;
 		};
 	});
+
+	/**
+	 * The `ssrSlideShift` stand-in (see ssr-initial-slide.ts): server HTML only.
+	 * Hydration writes the client's attributes over it, so it is gone before
+	 * the effects below measure and jump. `overflow: clip` on both axes makes
+	 * the box no scroll container while shifted (nothing to swipe or for Gecko
+	 * to restore into), and snap is off so no engine captures a snap target
+	 * through the translated positions.
+	 */
+	const ssrShift = $derived(!BROWSER && ssrSlideShift);
+	const ssrShiftStyle = $derived(
+		ssrShift
+			? `overflow-x: clip; overflow-y: clip; scroll-snap-type: none; ` +
+					`${LightboxSlidesCssVars.ssrIndex}: ${lightbox.activeIndex}; ` +
+					`${LightboxSlidesCssVars.ssrShiftSign}: ${lightbox.dir === 'rtl' ? 1 : -1};`
+			: ''
+	);
 
 	function indexFromScroll(viewport: HTMLElement): number {
 		return slideIndexFromInlinePosition(
@@ -362,8 +401,9 @@
 	data-orientation="horizontal"
 	{...rest}
 	style="display: flex; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: {SLIDES_SCROLL_SNAP_TYPE}; scroll-behavior: auto; scrollbar-width: none; overflow-anchor: none;{style ??
-		''};position: relative; container-type: size;"
+		''};position: relative; container-type: size;{ssrShiftStyle}"
 	data-ramka-slides=""
+	data-ssr-shift={ssrShift ? '' : undefined}
 	data-active-index={lightbox.activeIndex}
 	data-direction={lightbox.direction}
 >

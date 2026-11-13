@@ -70,7 +70,10 @@
 	 * Inside a `flushSync` (the morph's prepare) the extra pass still lands in
 	 * the same flush.
 	 */
-	let placed = $state(false);
+	// In-place hosts (`container={null}`) render their children right away,
+	// so a server-rendered open viewer is in the HTML — the deep-link pattern.
+	// A real portal target only exists in the browser.
+	let placed = $state(untrack(() => container) === null);
 
 	/**
 	 * Moves the host to the target. Safe with Svelte: the `{#if}` block below

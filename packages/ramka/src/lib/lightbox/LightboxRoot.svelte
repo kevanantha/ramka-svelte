@@ -61,6 +61,8 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { LightboxState, setLightboxContext } from './lightbox-state.svelte';
+	import { getLightboxStyleNonce } from './lightbox-csp';
+	import { serverPaintStyleTags } from './server-paint-styles';
 
 	let {
 		children,
@@ -81,56 +83,60 @@
 		onBeforeClose
 	}: LightboxRootProps = $props();
 
-	const state = new LightboxState({
-		get open() {
-			return open;
+	const uid = $props.id();
+	const state = new LightboxState(
+		{
+			get open() {
+				return open;
+			},
+			set open(next) {
+				open = next;
+			},
+			get value() {
+				return value;
+			},
+			set value(next) {
+				value = next;
+			},
+			get onOpenChange() {
+				return onOpenChange;
+			},
+			get onOpenChangeComplete() {
+				return onOpenChangeComplete;
+			},
+			get onValueChange() {
+				return onValueChange;
+			},
+			get onBeforeOpen() {
+				return onBeforeOpen;
+			},
+			get onBeforeClose() {
+				return onBeforeClose;
+			},
+			get count() {
+				return count;
+			},
+			get loop() {
+				return loop;
+			},
+			get dir() {
+				return dir;
+			},
+			get viewTransition() {
+				return viewTransition;
+			},
+			get morphTo() {
+				return morphTo;
+			},
+			get scrollTriggerIntoView() {
+				return scrollTriggerIntoView;
+			},
+			get awaitImageDecode() {
+				return awaitImageDecode;
+			}
 		},
-		set open(next) {
-			open = next;
-		},
-		get value() {
-			return value;
-		},
-		set value(next) {
-			value = next;
-		},
-		get onOpenChange() {
-			return onOpenChange;
-		},
-		get onOpenChangeComplete() {
-			return onOpenChangeComplete;
-		},
-		get onValueChange() {
-			return onValueChange;
-		},
-		get onBeforeOpen() {
-			return onBeforeOpen;
-		},
-		get onBeforeClose() {
-			return onBeforeClose;
-		},
-		get count() {
-			return count;
-		},
-		get loop() {
-			return loop;
-		},
-		get dir() {
-			return dir;
-		},
-		get viewTransition() {
-			return viewTransition;
-		},
-		get morphTo() {
-			return morphTo;
-		},
-		get scrollTriggerIntoView() {
-			return scrollTriggerIntoView;
-		},
-		get awaitImageDecode() {
-			return awaitImageDecode;
-		}
-	});
+		uid
+	);
 	state.connect();
 	setLightboxContext(state);
 
@@ -141,6 +147,18 @@
 		if (!h) return;
 		return untrack(() => state.bindHandle(h));
 	});
+
+	const styleNonce = getLightboxStyleNonce();
+	// A Root open at creation may be server-painted open, so it renders the
+	// first-paint rules into the head (see server-paint-styles.ts). Decided once
+	// so the server and hydration renders agree.
+	const serverPaintStyles = untrack(() => open) ? serverPaintStyleTags(styleNonce.nonce) : '';
 </script>
+
+<svelte:head>
+	{#if serverPaintStyles}
+		{@html serverPaintStyles}
+	{/if}
+</svelte:head>
 
 {@render children?.()}

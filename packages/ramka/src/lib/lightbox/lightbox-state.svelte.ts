@@ -134,8 +134,6 @@ export interface TriggerIdEntry {
 	image: HTMLImageElement | null;
 }
 
-let instanceCounter = 0;
-
 /**
  * Waits for the running animations on `el` to finish, then calls `onSettled`
  * if `isCurrent()` still holds, so a superseding open/close aborts it.
@@ -157,8 +155,11 @@ function runAfterAnimations(
 export class LightboxState {
 	readonly #props: LightboxStateProps;
 
-	/** Stable id prefix (tab ↔ tabpanel ids, dialog id). */
-	readonly baseId = `ramka-${++instanceCounter}`;
+	/**
+	 * Stable id prefix (tab ↔ tabpanel ids, dialog id). Built from Root's
+	 * `$props.id()`, so server HTML and hydration agree.
+	 */
+	readonly baseId: string;
 
 	// ── Reactive state ──────────────────────────────────────────────────────
 	/** Whether the portal is in the DOM (stays true during exit animations). */
@@ -250,8 +251,9 @@ export class LightboxState {
 	#lastInternalOpen: boolean;
 	#morph: ViewTransitionMorph | null = null;
 
-	constructor(props: LightboxStateProps) {
+	constructor(props: LightboxStateProps, uid: string) {
 		this.#props = props;
+		this.baseId = `ramka-${uid}`;
 		this.#prevIndex = props.value;
 		this.#lastInternalOpen = props.open;
 		this.mounted = props.open;

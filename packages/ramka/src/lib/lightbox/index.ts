@@ -37,6 +37,7 @@ export { default as Thumbnail } from './LightboxThumbnail.svelte';
 export { default as Zoom } from './LightboxZoom.svelte';
 export { default as ZoomIn } from './LightboxZoomIn.svelte';
 export { default as ZoomOut } from './LightboxZoomOut.svelte';
+export { default as CSPProvider } from './LightboxCSPProvider.svelte';
 
 export type { LightboxRootProps } from './LightboxRoot.svelte';
 export type {
@@ -66,6 +67,7 @@ export type {
 } from './LightboxZoom.svelte';
 export type { LightboxZoomInProps } from './LightboxZoomIn.svelte';
 export type { LightboxZoomOutProps } from './LightboxZoomOut.svelte';
+export type { LightboxCSPProviderProps } from './LightboxCSPProvider.svelte';
 export type {
 	NavigationSource,
 	LightboxBeforeOpen,
