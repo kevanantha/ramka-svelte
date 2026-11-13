@@ -20,8 +20,9 @@ Work in progress. Ported so far:
 - **Development warnings.** Unnamed parts (`Close`, `Previous`, `Next`, `ZoomIn`, `ZoomOut`, `Item`), a `dir` that disagrees with the scroller's CSS direction, and handle calls before a Root is mounted.
 - **Stage.** `Stage` scopes pull to dismiss, zoom pan bounds and wheel / pinch, and the media keys (arrows, Home / End, `+` `-` `0`) to the media pane, so side panels beside it keep native scroll and their own keys. Its snippet's `morph` attachment (also on `getLightboxStageContext()`) makes one element the shared open/close morph destination, such as a 9:16 stories frame.
 - **Docs presets.** `/presets/store` and `/presets/stories`, with the preset page scaffolding (title, live demo, file tabs with highlighted source and copy).
+- **Thumbnail strip.** `ThumbnailStrip` + `ThumbnailStripTrack`: the active thumbnail stays centered under the strip's midline, linked to `Slides` by a native `ScrollTimeline` (a measured JS scroll mirror for variable-width slides, while zoomed, or where `ScrollTimeline` is missing). Thumbnail clicks, tablist arrows, `Content` keys and `Previous` / `Next` scrub the track (`scrubOnSelect`); thumbnail clicks also crossfade the stage with an element-scoped view transition on `Slides` (`selectViewTransition`, tuned by `--lightbox-select-vt-duration` / `--lightbox-select-vt-easing`), and `wrapSelectCommit` wraps the index commit. The strip publishes `data-scrubbing`, `data-positioned` and `--lightbox-thumbnail-strip-travel`.
 
-Not ported yet: `ThumbnailStrip`, the other docs pages and presets, and tests.
+Not ported yet: the other docs pages and presets, and tests.
 
 ## Usage
 

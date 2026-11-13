@@ -34,6 +34,8 @@ export { default as Counter } from './LightboxCounter.svelte';
 export { default as Caption } from './LightboxCaption.svelte';
 export { default as ThumbnailGroup } from './LightboxThumbnailGroup.svelte';
 export { default as Thumbnail } from './LightboxThumbnail.svelte';
+export { default as ThumbnailStrip } from './LightboxThumbnailStrip.svelte';
+export { default as ThumbnailStripTrack } from './LightboxThumbnailStripTrack.svelte';
 export { default as Zoom } from './LightboxZoom.svelte';
 export { default as ZoomIn } from './LightboxZoomIn.svelte';
 export { default as ZoomOut } from './LightboxZoomOut.svelte';
@@ -60,6 +62,11 @@ export type { LightboxCounterProps, LightboxCounterState } from './LightboxCount
 export type { LightboxCaptionProps } from './LightboxCaption.svelte';
 export type { LightboxThumbnailGroupProps } from './LightboxThumbnailGroup.svelte';
 export type { LightboxThumbnailProps } from './LightboxThumbnail.svelte';
+export type {
+	LightboxThumbnailStripProps,
+	LightboxThumbnailStripState
+} from './LightboxThumbnailStrip.svelte';
+export type { LightboxThumbnailStripTrackProps } from './LightboxThumbnailStripTrack.svelte';
 export type {
 	LightboxZoomProps,
 	LightboxZoomState,
@@ -98,6 +105,7 @@ export {
 	LightboxCaptionDataAttributes,
 	LightboxThumbnailGroupDataAttributes,
 	LightboxThumbnailDataAttributes,
+	LightboxThumbnailStripDataAttributes,
 	LightboxZoomDataAttributes,
 	LightboxZoomInDataAttributes,
 	LightboxZoomOutDataAttributes,
@@ -107,5 +115,6 @@ export {
 export {
 	LightboxContentCssVars,
 	LightboxBackdropCssVars,
-	LightboxDocumentCssVars
+	LightboxDocumentCssVars,
+	LightboxThumbnailStripCssVars
 } from './lightbox-css-vars';

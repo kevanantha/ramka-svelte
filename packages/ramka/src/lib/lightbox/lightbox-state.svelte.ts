@@ -240,6 +240,13 @@ export class LightboxState {
 	backdropElement: HTMLElement | null = null;
 	slidesViewport: HTMLElement | null = null;
 	slidesGeometry: SlidesGeometry = { offsets: [], base: 0, step: 1, count: 0 };
+	readonly #slidesViewportListeners = new Set<() => void>();
+	/**
+	 * A mounted `Lightbox.ThumbnailStrip`'s discrete-nav entry point. `navigate`
+	 * routes keyboard / Previous / Next through it so the strip scrubs with the
+	 * stage.
+	 */
+	thumbnailStripSelect: ((index: number, source: NavigationSource) => void) | null = null;
 
 	/** Bumped by every open/close; async steps of a superseded one bail. */
 	#closeGen = 0;
@@ -363,9 +370,27 @@ export class LightboxState {
 		this.#props.onValueChange?.(index, { source });
 	}
 
-	/** Discrete navigation entry point for keyboard / Previous / Next. */
+	/**
+	 * Discrete navigation entry point for keyboard / Previous / Next: through
+	 * a mounted ThumbnailStrip (so its track scrubs), else straight to the index.
+	 */
 	navigate(index: number, source: NavigationSource): void {
-		this.setActiveIndex(index, source);
+		if (this.thumbnailStripSelect) this.thumbnailStripSelect(index, source);
+		else this.setActiveIndex(index, source);
+	}
+
+	/**
+	 * Called whenever the Slides viewport registers, unregisters or re-measures,
+	 * so scroll-linked chrome (ThumbnailStrip) can re-wire. Returns unsubscribe.
+	 */
+	subscribeSlidesViewport(listener: () => void): () => void {
+		this.#slidesViewportListeners.add(listener);
+		return () => this.#slidesViewportListeners.delete(listener);
+	}
+
+	/** Notify `subscribeSlidesViewport` listeners (called by Slides). */
+	notifySlidesViewport(): void {
+		this.#slidesViewportListeners.forEach((listener) => listener());
 	}
 
 	/** Open from a trigger element (records the morph origin first). */

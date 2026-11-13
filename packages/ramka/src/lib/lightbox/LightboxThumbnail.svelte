@@ -11,6 +11,7 @@
 <script lang="ts">
 	import { getLightboxContext } from './lightbox-state.svelte';
 	import { getLightboxThumbnailGroupContext } from './LightboxThumbnailGroup.svelte';
+	import { getLightboxThumbnailStripContextOptional } from './lightbox-thumbnail-strip-context';
 
 	let {
 		index,
@@ -22,15 +23,20 @@
 
 	const lightbox = getLightboxContext();
 	const group = getLightboxThumbnailGroupContext();
+	// Inside a ThumbnailStrip, selection goes through the strip so taps can
+	// scrub the linked track; elsewhere a click sets the index directly.
+	const strip = getLightboxThumbnailStripContextOptional();
 	const active = $derived(lightbox.activeIndex === index);
 
 	$effect(() => {
 		const node = ref;
 		const i = index;
-		if (!node || !group) return;
-		group.set(i, node);
+		if (!node) return;
+		group?.set(i, node);
+		strip?.registerThumb(i, node);
 		return () => {
-			if (group.get(i) === node) group.delete(i);
+			if (group?.get(i) === node) group.delete(i);
+			strip?.registerThumb(i, null);
 		};
 	});
 </script>
@@ -49,7 +55,9 @@
 	data-index={index}
 	onclick={(event) => {
 		onclick?.(event);
-		if (!event.defaultPrevented) lightbox.setActiveIndex(index, 'thumbnail');
+		if (event.defaultPrevented) return;
+		if (strip) strip.selectIndex(index);
+		else lightbox.setActiveIndex(index, 'thumbnail');
 	}}
 >
 	{@render children?.()}

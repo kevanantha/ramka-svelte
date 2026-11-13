@@ -99,10 +99,12 @@
 		const el = ref;
 		if (!el) return;
 		lightbox.slidesViewport = el;
+		lightbox.notifySlidesViewport();
 		return () => {
 			if (lightbox.slidesViewport === el) lightbox.slidesViewport = null;
 			snapSuppressDepth = 0;
 			el.style.scrollSnapType = SLIDES_SCROLL_SNAP_TYPE;
+			lightbox.notifySlidesViewport();
 		};
 	});
 
@@ -218,6 +220,7 @@
 		return untrack(() => {
 			const dir = lightbox.dir;
 			lightbox.slidesGeometry = measureSlidesGeometry(viewport, dir);
+			lightbox.notifySlidesViewport();
 			const observer = new ResizeObserver(() => {
 				const prev = lightbox.slidesGeometry;
 				const next = measureSlidesGeometry(viewport, dir);
@@ -239,6 +242,7 @@
 				lightbox.navigationLocked = false;
 				window.clearTimeout(idleTimer);
 				idleTimer = 0;
+				lightbox.notifySlidesViewport();
 				scrollToIndex(lightbox.activeIndex);
 				requestAnimationFrame(() => {
 					requestAnimationFrame(() => {

@@ -19,6 +19,7 @@
 <script lang="ts">
 	import { getLightboxContext } from './lightbox-state.svelte';
 	import { arrowKeyIndexDelta } from './lightbox-direction';
+	import { getLightboxThumbnailStripContextOptional } from './lightbox-thumbnail-strip-context';
 
 	let {
 		ref = $bindable(null),
@@ -31,6 +32,7 @@
 
 	const lightbox = getLightboxContext();
 	const thumbs = setGroupContext(new Map());
+	const strip = getLightboxThumbnailStripContextOptional();
 	let focusWithin = $state(false);
 
 	// Items switch to tabpanel semantics while a tablist is mounted.
@@ -56,7 +58,11 @@
 		// Content would otherwise handle the same arrow as gallery navigation.
 		event.preventDefault();
 		if (lightbox.navigationLocked || itemCount === 0 || nextIndex === activeIndex) return;
-		lightbox.setActiveIndex(nextIndex, 'thumbnail');
+		// Inside a ThumbnailStrip, reuse its scrub path so arrow keys match
+		// pointer motion, but keep the stage commit instant (no Slides view
+		// transition), like all other keyboard navigation.
+		if (strip) strip.selectIndex(nextIndex, { source: 'thumbnail', stageViewTransition: false });
+		else lightbox.setActiveIndex(nextIndex, 'thumbnail');
 		thumbs.get(nextIndex)?.focus();
 	}
 </script>
