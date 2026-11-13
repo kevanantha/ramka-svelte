@@ -95,6 +95,12 @@
 		placed = true;
 		return () => {
 			placed = false;
+			// Svelte removes a destroyed component's DOM by walking its own node
+			// range, which a moved host has left. The `{#if}` above still removes
+			// it on close, but when an ancestor unmounts (a route change with the
+			// viewer open) only this teardown runs, so take the host out here, as
+			// React's createPortal does.
+			if (target !== null) node.remove();
 		};
 	};
 </script>
