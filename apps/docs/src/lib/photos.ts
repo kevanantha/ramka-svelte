@@ -3,6 +3,8 @@
  * picsum.photos). Full-size files in static/photos, trigger thumbnails in
  * static/photos/thumbs (scripts/make-thumbs.sh).
  */
+import { blurPlaceholder } from './blur-placeholder';
+
 export interface GalleryItem {
 	src: string;
 	thumb: string;
@@ -20,6 +22,19 @@ export interface GalleryItem {
 	 * thumb behind the destination, and a blur would cover that bridge.
 	 */
 	destinationBlur?: boolean;
+}
+
+/** 8px webp LQIPs of the static photos (vite-imagetools `inline`). */
+const lqips = import.meta.glob<string>('../../static/photos/{xfade-*,morph*,bbb-poster}.jpg', {
+	query: '?w=8&format=webp&inline',
+	import: 'default',
+	eager: true
+});
+
+/** next/image-style blur LQIP style for a static photo (see blur-placeholder.ts). */
+export function blurStyle(item: GalleryItem): string | undefined {
+	const lqip = item.blurDataURL ?? lqips[`../../static${item.src}`];
+	return lqip && blurPlaceholder(lqip, { w: item.width, h: item.height });
 }
 
 function photo(
@@ -138,24 +153,6 @@ export const ramkaN = photo(
 	'Husky on the lookout'
 );
 
-/**
- * The original docs' `_data/images.generated.ts` lightbox set (lb1–lb6,
- * 1200×800), used by the minimal-composition and heavy-feed debug pages.
- */
-export interface LightboxImageFile {
-	src: string;
-	thumb: string;
-	width: number;
-	height: number;
-}
-
-export const lightboxImageFiles: LightboxImageFile[] = [1, 2, 3, 4, 5, 6].map((n) => ({
-	src: `/photos/lb${n}.jpg`,
-	thumb: `/photos/thumbs/lb${n}.jpg`,
-	width: 1200,
-	height: 800
-}));
-
 /** Real-estate listing photos (original docs' prop-*.jpg). */
 const PROPERTY = 'The Olive Grove Residence';
 function property(file: string, width: number, height: number, alt: string, label: string) {
@@ -178,3 +175,61 @@ export const propertyPhotos = [
 	property('prop-garden', 1400, 900, 'Landscaped garden with mature olive trees', 'Garden'),
 	property('prop-ext', 900, 1400, 'Front elevation at dusk with warm lighting', 'Exterior')
 ];
+
+// Guide-page photos, from the original docs (Unsplash license via picsum.photos).
+
+/** Lightbox docs hero (overview page). */
+export const docsHero = [
+	photo('docs-hero-a', 1200, 800, 'Mountain ridge', 'Mountain ridge'),
+	photo('docs-hero-b', 1200, 800, 'Coastal path', 'Coastal path'),
+	photo('docs-hero-c', 1200, 800, 'Forest light', 'Forest light')
+];
+
+/** The shared six-photo set from the original's `_data/lightbox-images.ts`. */
+export const lightboxImages = [
+	photo(
+		'lb1',
+		1200,
+		800,
+		'Mountain landscape at sunrise',
+		'Mountain landscape at sunrise — Dolomites, Italy'
+	),
+	photo(
+		'lb2',
+		1200,
+		800,
+		'Ocean waves crashing on rocks',
+		'Ocean waves crashing on coastal rocks — Big Sur, California'
+	),
+	photo('lb3', 1200, 800, 'Forest path in autumn', 'Autumn forest path — Black Forest, Germany'),
+	photo('lb4', 1200, 800, 'City skyline at night', 'City skyline at night — Tokyo, Japan'),
+	photo('lb5', 1200, 800, 'Desert sand dunes', 'Sand dunes at golden hour — Sahara Desert'),
+	photo('lb6', 1200, 800, 'Northern lights over a lake', 'Aurora borealis — Lofoten, Norway')
+];
+
+/** morphTo demos (view transitions page). */
+export const morphImages = [
+	photo('morph1', 1200, 800, 'Alpine meadow', 'Alpine meadow'),
+	photo('morph2', 1200, 800, 'Rocky coastline', 'Rocky coastline'),
+	photo('morph3', 1200, 800, 'Autumn vineyard', 'Autumn vineyard'),
+	photo('morph4', 1200, 800, 'Desert canyon', 'Desert canyon'),
+	photo('morph5', 1200, 800, 'Northern lake', 'Northern lake')
+];
+
+/** Crossfade + source-aspect demos. Matching 3∶2 sources unless noted. */
+export const xfade = {
+	a: photo('xfade-a', 1500, 1000, 'Coastal cliffs', 'Coastal cliffs'),
+	/** A CDN-style baked 1∶1 crop of `a` (the "Don't" case). */
+	aSquare: photo('xfade-a-square', 1000, 1000, 'Coastal cliffs', 'Coastal cliffs'),
+	b: photo('xfade-b', 1500, 1000, 'Mountain lake', 'Mountain lake'),
+	c: photo('xfade-c', 1500, 1000, 'Desert road', 'Desert road'),
+	d: photo('xfade-d', 1500, 1000, 'Pine forest', 'Pine forest'),
+	e: photo('xfade-e', 1500, 1000, 'City night', 'City night'),
+	f: photo('xfade-f', 1500, 1000, 'Snow peak', 'Snow peak'),
+	g: photo('xfade-g', 1500, 1000, 'River bend', 'River bend'),
+	ava: photo('xfade-ava', 900, 1200, 'Portrait of Ava Chen', 'Ava Chen'),
+	jules: photo('xfade-jules', 900, 1200, 'Portrait of Jules Okonkwo', 'Jules Okonkwo'),
+	sam: photo('xfade-sam', 900, 1200, 'Portrait of Sam Rivera', 'Sam Rivera'),
+	mei: photo('xfade-mei', 900, 1200, 'Portrait of Mei Laurent', 'Mei Laurent'),
+	bbbPoster: photo('bbb-poster', 500, 707, 'Big Buck Bunny', 'Big Buck Bunny')
+};

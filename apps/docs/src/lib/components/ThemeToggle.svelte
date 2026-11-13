@@ -1,6 +1,9 @@
 <script lang="ts">
 	import Moon from '@lucide/svelte/icons/moon';
 	import Sun from '@lucide/svelte/icons/sun';
+	import { ghostButtonClass, headerButtonClass } from './docs/classes';
+
+	let { variant = 'outline' }: { variant?: 'outline' | 'ghost' } = $props();
 
 	// The pre-paint script in app.html sets the class; read it after mount so
 	// the server render and hydration agree on the icon.
@@ -30,7 +33,7 @@
 	type="button"
 	aria-label="Toggle theme"
 	onclick={toggle}
-	class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+	class={variant === 'ghost' ? ghostButtonClass : headerButtonClass}
 >
 	{#if dark}<Sun class="h-4 w-4" />{:else}<Moon class="h-4 w-4" />{/if}
 </button>

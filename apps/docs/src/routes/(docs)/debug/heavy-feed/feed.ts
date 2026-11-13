@@ -4,7 +4,7 @@
  *
  *   /debug/heavy-feed?elements=16000&load=medium&live=1
  */
-import { lightboxImageFiles, type LightboxImageFile } from '#lib/photos.js';
+import { lightboxImages, type GalleryItem } from '#lib/photos.js';
 
 export const TARGET_SIZES = [500, 1000, 4000, 8000, 16000, 20000] as const;
 const DEFAULT_TARGET = 4000;
@@ -105,7 +105,7 @@ export interface FeedPost {
 	minutesAgo: number;
 	text: string;
 	/** 0–10 photos; empty for text-only posts. */
-	photos: LightboxImageFile[];
+	photos: GalleryItem[];
 	likes: number;
 	replies: number;
 	reposts: number;
@@ -124,7 +124,7 @@ export function buildPosts(count: number): FeedPost[] {
 			text: TEXTS[(i * 5 + Math.floor(i / TEXTS.length)) % TEXTS.length]!,
 			photos: Array.from(
 				{ length: imageCount },
-				(_, j) => lightboxImageFiles[(i + j) % lightboxImageFiles.length]!
+				(_, j) => lightboxImages[(i + j) % lightboxImages.length]!
 			),
 			likes: (i * 37) % 900,
 			replies: (i * 13) % 120,

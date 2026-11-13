@@ -24,7 +24,7 @@
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
 	import X from '@lucide/svelte/icons/x';
-	import { lightboxImageFiles } from '#lib/photos.js';
+	import { lightboxImages } from '#lib/photos.js';
 
 	/** Explicit rather than relying on the Slides default, so the audit can check it. */
 	const PRELOAD = 1;
@@ -304,7 +304,7 @@
 		const schedule = () => {
 			cancelAnimationFrame(frame);
 			frame = requestAnimationFrame(() => {
-				audit = runAudit(lightboxImageFiles.length, index, firstIntentAt);
+				audit = runAudit(lightboxImages.length, index, firstIntentAt);
 			});
 		};
 		schedule();
@@ -461,7 +461,7 @@
 	     — without it the library warns and the first frame can flash blank. -->
 	<Lightbox.Root bind:open bind:value>
 		<div class="grid grid-cols-3 gap-3 sm:grid-cols-6">
-			{#each lightboxImageFiles as photo, i (photo.src)}
+			{#each lightboxImages as photo, i (photo.src)}
 				<Lightbox.Trigger
 					index={i}
 					class="overflow-hidden rounded-lg outline-offset-2 focus-visible:outline-2 focus-visible:outline-sky-500"
@@ -494,7 +494,7 @@
 					aria-label="Photos"
 					class="flex-1 scrollbar-none [&::-webkit-scrollbar]:hidden"
 				>
-					{#each lightboxImageFiles as photo, i (photo.src)}
+					{#each lightboxImages as photo, i (photo.src)}
 						<Lightbox.Slide
 							class="h-full min-w-full flex-[0_0_100%] px-4 pt-16 pb-24 sm:px-20 sm:pt-20"
 						>

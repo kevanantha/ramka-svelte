@@ -1,20 +1,38 @@
+<!--
+  Header for pages outside the docs shell, which have no sidebar to carry the
+  wordmark and theme toggle. `home` links the wordmark to the landing page
+  (off on the landing page itself).
+-->
 <script lang="ts">
 	import GitHubIcon from './GitHubIcon.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
+	import { headerButtonClass } from './docs/classes';
 	import { GITHUB_URL } from '#lib/site.js';
+
+	let { home = false }: { home?: boolean } = $props();
+
+	const wordmark = 'text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-50';
 </script>
 
+<!-- Mobile padding matches the docs mobile nav (56px row) so the wordmark
+     doesn't shift between pages. -->
 <header class="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-3 md:py-5">
-	<span class="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
-		ramka
-	</span>
+	{#if home}
+		<a
+			href="/"
+			class="{wordmark} transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
+			>ramka</a
+		>
+	{:else}
+		<span class={wordmark}>ramka</span>
+	{/if}
 	<div class="flex items-center gap-2">
 		<a
 			href={GITHUB_URL}
 			target="_blank"
 			rel="noreferrer"
 			aria-label="ramka on GitHub"
-			class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+			class={headerButtonClass}
 		>
 			<GitHubIcon class="h-4 w-4" />
 		</a>

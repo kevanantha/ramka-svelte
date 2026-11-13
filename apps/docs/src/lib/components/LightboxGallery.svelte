@@ -20,7 +20,7 @@
 		chromeButtonSegment,
 		chromeSegmentDivider
 	} from './chrome';
-	import type { GalleryItem } from '#lib/photos.js';
+	import { blurStyle, type GalleryItem } from '#lib/photos.js';
 	import { blurPlaceholderStyle, clearBlurPlaceholder } from '#lib/blur-placeholder.js';
 
 	type SlidesLayout = 'bleed' | 'snug';
@@ -35,7 +35,9 @@
 		slidesLayout = 'bleed',
 		layoutToggle = false,
 		thumbnails = 'desktop',
+		pullToClose = true,
 		slide,
+		overlay,
 		portalProps,
 		ssrSlideShift = false,
 		captionFallback
@@ -58,10 +60,17 @@
 		 * first-visit default; the user's choice persists in localStorage.
 		 */
 		layoutToggle?: boolean;
-		/** Thumbnail strip on desktop (multi-item galleries), or `never`. */
-		thumbnails?: 'desktop' | 'never';
-		/** Custom slide content (video, 3D, …) in place of Zoom + Media + img. */
+		/** Thumbnail row: `desktop` (md+), `always`, or `never`. */
+		thumbnails?: 'desktop' | 'always' | 'never';
+		/** `false` when content owns vertical drag (maps, orbit, …). */
+		pullToClose?: boolean;
+		/**
+		 * Custom slide content (video, 3D, …) in place of Zoom → Media → img
+		 * (the original's `renderItem`).
+		 */
 		slide?: Snippet<[item: GalleryItem, index: number, state: Lightbox.LightboxItemRenderState]>;
+		/** Rendered inside Content after Slides, e.g. in-viewer controls. */
+		overlay?: Snippet;
 		/**
 		 * Forwarded to `Lightbox.Portal`, e.g. `{ container: null }` to render
 		 * in place so a prerendered page can ship the viewer already open.
@@ -80,6 +89,9 @@
 		 */
 		captionFallback?: string;
 	} = $props();
+
+	// No strip → solo layout: tighter bottom band, placard centered in it.
+	const showStrip = $derived(thumbnails !== 'never' && items.length > 1);
 
 	// Same key as the original docs, so the preference carries over.
 	const STORAGE_KEY = 'ramka-docs-slides-layout';
@@ -116,9 +128,6 @@
 		else document.startViewTransition(() => flushSync(flip));
 	}
 
-	// No strip → solo layout: tighter bottom band with the placard centered in it.
-	const showStrip = $derived(thumbnails !== 'never' && items.length > 1);
-
 	const backdropTone = $derived(
 		backdrop === 'solid' ? 'bg-white dark:bg-black' : 'lightbox-demo-backdrop-light'
 	);
@@ -130,9 +139,12 @@
 	<Lightbox.Backdrop class="lightbox-demo-backdrop {backdropTone} fixed inset-0" />
 	<Lightbox.Content
 		aria-label={ariaLabel}
-		class="lightbox-demo-content fixed inset-0 flex flex-col overscroll-contain outline-none {snug
-			? 'lightbox-demo-content-snug'
-			: ''} {showStrip ? '' : 'lightbox-demo-content-solo'}"
+		{pullToClose}
+		class={[
+			'lightbox-demo-content fixed inset-0 flex flex-col overscroll-contain outline-none',
+			snug && 'lightbox-demo-content-snug',
+			!showStrip && 'lightbox-demo-content-solo'
+		]}
 	>
 		<!-- Remount the track when the layout flips: the bleed/snug geometry
 		     (spacers, widths) shouldn't animate between. -->
@@ -186,9 +198,7 @@
 												loading="eager"
 												draggable="false"
 												class="select-none"
-												style={item.destinationBlur && item.blurDataURL
-													? blurPlaceholderStyle({ ...item, blurDataURL: item.blurDataURL })
-													: undefined}
+												style={item.destinationBlur ? blurStyle(item) : undefined}
 												{@attach item.destinationBlur ? clearBlurPlaceholder : null}
 											/>
 										</Lightbox.Media>
@@ -200,6 +210,8 @@
 				{/each}
 			</Lightbox.Slides>
 		{/key}
+
+		{@render overlay?.()}
 
 		<div
 			class="lightbox-demo-chrome-top lightbox-demo-chrome-hide absolute end-3 top-[calc(0.75rem+env(safe-area-inset-top,0px))] z-30 flex gap-2"
@@ -243,9 +255,8 @@
 		</div>
 
 		<div
-			class="lightbox-demo-chrome-bottom lightbox-demo-chrome-hide {showStrip
-				? ''
-				: 'lightbox-demo-chrome-bottom-solo'} pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col items-center gap-3 px-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
+			class:lightbox-demo-chrome-bottom-solo={!showStrip}
+			class="lightbox-demo-chrome-bottom lightbox-demo-chrome-hide pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col items-center gap-3 px-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
 		>
 			<div class="flex max-w-full flex-col items-center text-center">
 				<Lightbox.Caption
@@ -261,10 +272,13 @@
 				{/if}
 			</div>
 			{#if showStrip}
-				<!-- Visibility only (desktop); the linked layout and sync live in
+				<!-- Visibility only; the linked layout and sync live in
 				     Lightbox.ThumbnailStrip. Square thumbs + a stationary midline square. -->
 				<Lightbox.ThumbnailStrip
-					class="lightbox-demo-thumbnail-strip pointer-events-auto hidden md:block"
+					class={[
+						'lightbox-demo-thumbnail-strip pointer-events-auto',
+						thumbnails !== 'always' && 'hidden md:block'
+					]}
 				>
 					<Lightbox.ThumbnailStripTrack aria-label="Photo thumbnails">
 						{#each items as item, i (item.id ?? item.src)}
