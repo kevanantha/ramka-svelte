@@ -15,11 +15,13 @@ Work in progress. Ported so far:
 - **Chrome.** `Previous`, `Next`, `Counter`, `Caption`, `ThumbnailGroup`, `Thumbnail`.
 - **Zoom.** `Zoom`, `ZoomIn`, `ZoomOut`: pinch, double-tap/click, ctrl/trackpad wheel, drag with momentum and rubber-banding, and `+` `-` `0` / arrow keys through `Content`. The gesture maths, pose controller and zoom session are the original's; the engine loads as a separate chunk, as in the original.
 - **Pull to dismiss.** Drag the image down (touch, or a two-finger trackpad swipe) to close; a short pull springs back on a velocity-aware spring. `Content` publishes `--lightbox-pull-progress` and the snap-back's `--lightbox-pull-snap-duration` / `--lightbox-pull-snap-easing` on itself and `Backdrop`, with `data-pulling`, `data-pull-snapping` and `data-pull-dismissing` for styling. `pullToClose={false}` turns it off and skips its chunk.
-
+- **Imperative handle.** `createHandle()` for `Root` and `Trigger`: `open(index, { triggerId })`, `close()`, `goTo()` and a reactive `isOpen`, with Triggers inside the Root or detached from it.
+- **Server-rendered open viewers.** With `Portal container={null}` a deep link can be server-rendered (or prerendered) already open. The active item is stamped `data-ssr-active` for `scroll-initial-target`, and `Slides ssrSlideShift` translates the track, so the first paint shows the right slide before hydration in any browser. The active trigger is stamped `data-morph-target`. The first-paint rules ship as `<style>` tags in the head, and `CSPProvider` stamps them with the page's CSP nonce.
+- **Development warnings.** Unnamed parts (`Close`, `Previous`, `Next`, `ZoomIn`, `ZoomOut`, `Item`), a `dir` that disagrees with the scroller's CSS direction, and handle calls before a Root is mounted.
 - **Stage.** `Stage` scopes pull to dismiss, zoom pan bounds and wheel / pinch, and the media keys (arrows, Home / End, `+` `-` `0`) to the media pane, so side panels beside it keep native scroll and their own keys. Its snippet's `morph` attachment (also on `getLightboxStageContext()`) makes one element the shared open/close morph destination, such as a 9:16 stories frame.
 - **Docs presets.** `/presets/store` and `/presets/stories`, with the preset page scaffolding (title, live demo, file tabs with highlighted source and copy).
 
-Not ported yet: `ThumbnailStrip`, `createHandle`, `CSPProvider`, the other docs pages and presets, and tests.
+Not ported yet: `ThumbnailStrip`, the other docs pages and presets, and tests.
 
 ## Usage
 

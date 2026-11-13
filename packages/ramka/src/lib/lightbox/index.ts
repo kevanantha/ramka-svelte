@@ -101,6 +101,11 @@ export {
 	LightboxZoomDataAttributes,
 	LightboxZoomInDataAttributes,
 	LightboxZoomOutDataAttributes,
-	LightboxDocumentDataAttributes
+	LightboxDocumentDataAttributes,
+	LIGHTBOX_PART_IDENTITY_ATTRIBUTES
 } from './lightbox-data-attributes';
-export { LightboxDocumentCssVars } from './lightbox-css-vars';
+export {
+	LightboxContentCssVars,
+	LightboxBackdropCssVars,
+	LightboxDocumentCssVars
+} from './lightbox-css-vars';

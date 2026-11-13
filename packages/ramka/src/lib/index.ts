@@ -11,3 +11,5 @@ export type { LightboxTriggerRenderState } from './lightbox/LightboxTrigger.svel
 export type { LightboxItemContext } from './lightbox/LightboxItem.svelte';
 export type { LightboxStageRenderState } from './lightbox/LightboxStage.svelte';
 export type { LightboxHandle, LightboxHandleOpenOptions } from './lightbox/lightbox-handle.svelte';
+export type { NavigationSource } from './lightbox/lightbox-state.svelte';
+export type { TextDirection } from './lightbox/lightbox-direction';
