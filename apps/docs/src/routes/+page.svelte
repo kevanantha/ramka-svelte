@@ -43,7 +43,7 @@
 
 		<section class="mx-auto w-full max-w-5xl px-6 pt-16 pb-24 md:pt-24">
 			<p class="mb-6 text-center text-sm text-neutral-400 dark:text-neutral-600">
-				Click any image. Swipe, pinch to zoom.
+				Click any image. Swipe, pinch to zoom, pull to dismiss.
 			</p>
 			<LandingDemo />
 		</section>

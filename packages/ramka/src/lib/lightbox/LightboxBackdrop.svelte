@@ -9,6 +9,7 @@
 <script lang="ts">
 	import { getLightboxContext } from './lightbox-state.svelte';
 	import { getLightboxPortalContext } from './LightboxPortal.svelte';
+	import { containTouchScroll } from './touch-scroll-containment';
 
 	let {
 		ref = $bindable(null),
@@ -44,6 +45,7 @@
 			? 'pointer-events: none;'
 			: ''}"
 		data-ramka-backdrop=""
+		{@attach lightbox.mounted && !parked ? containTouchScroll : null}
 		data-open={lightbox.open ? '' : undefined}
 		data-closed={lightbox.open ? undefined : ''}
 		onclick={(event) => {

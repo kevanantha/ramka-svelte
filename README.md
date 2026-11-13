@@ -14,8 +14,9 @@ Work in progress. Ported so far:
 - **Media.** `Item` (preload window, tab/tabpanel or slide ARIA, canvas placeholder bridge), `Media` (fit-box sizing).
 - **Chrome.** `Previous`, `Next`, `Counter`, `Caption`, `ThumbnailGroup`, `Thumbnail`.
 - **Zoom.** `Zoom`, `ZoomIn`, `ZoomOut`: pinch, double-tap/click, ctrl/trackpad wheel, drag with momentum and rubber-banding, and `+` `-` `0` / arrow keys through `Content`. The gesture maths, pose controller and zoom session are the original's; the engine loads as a separate chunk, as in the original.
+- **Pull to dismiss.** Drag the image down (touch, or a two-finger trackpad swipe) to close; a short pull springs back on a velocity-aware spring. `Content` publishes `--lightbox-pull-progress` and the snap-back's `--lightbox-pull-snap-duration` / `--lightbox-pull-snap-easing` on itself and `Backdrop`, with `data-pulling`, `data-pull-snapping` and `data-pull-dismissing` for styling. `pullToClose={false}` turns it off and skips its chunk.
 
-Not ported yet: pull to dismiss, `Stage`, `ThumbnailStrip`, `createHandle`, `CSPProvider`, the docs pages, presets and tests.
+Not ported yet: `Stage`, `ThumbnailStrip`, `createHandle`, `CSPProvider`, the docs pages, presets and tests.
 
 ## Usage
 

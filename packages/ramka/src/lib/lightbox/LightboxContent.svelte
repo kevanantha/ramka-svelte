@@ -3,6 +3,12 @@
 
 	export interface LightboxContentProps extends HTMLAttributes<HTMLDivElement> {
 		ref?: HTMLDivElement | null;
+		/**
+		 * Drag the image vertically (touch, or a two-finger trackpad swipe) to
+		 * close. Its engine is a separate chunk; `false` skips the download.
+		 * @default true
+		 */
+		pullToClose?: boolean;
 	}
 
 	const TABBABLE_SELECTOR = [
@@ -36,9 +42,13 @@
 	import { getLightboxContext } from './lightbox-state.svelte';
 	import { getLightboxPortalContext } from './LightboxPortal.svelte';
 	import { arrowKeyIndexDelta } from './lightbox-direction';
+	import { getPullRuntimeSync, loadPullRuntime } from './lightbox-pull-loader';
+	import type { PullToDismissHost } from './pull-to-dismiss.svelte';
+	import { containTouchScroll } from './touch-scroll-containment';
 
 	let {
 		ref = $bindable(null),
+		pullToClose = true,
 		children,
 		style,
 		onkeydown,
@@ -129,6 +139,48 @@
 			document.removeEventListener('wheel', onWheel);
 		};
 	});
+
+	// Pull-to-dismiss. The engine loads with the first open (Trigger intent
+	// usually has it cached by then); Close, Escape and the scrim still work if
+	// it never arrives.
+	let pullRuntime = $state.raw(getPullRuntimeSync());
+	$effect(() => {
+		if (!pullToClose || pullRuntime || !lightbox.mounted) return;
+		let cancelled = false;
+		loadPullRuntime().then(
+			(runtime) => {
+				if (!cancelled) pullRuntime = runtime;
+			},
+			(error: unknown) => {
+				if (DEV) console.warn('[ramka] The pull-to-dismiss runtime failed to load.', error);
+			}
+		);
+		return () => {
+			cancelled = true;
+		};
+	});
+	const pullHost: PullToDismissHost = {
+		get open() {
+			return lightbox.open;
+		},
+		get backdrop() {
+			return lightbox.backdropElement;
+		},
+		// The shared morph destination pulls as one unit, so carousels can keep
+		// clipping neighbours; otherwise the active slide moves.
+		get dragTarget() {
+			return lightbox.destinationMorphElement ?? lightbox.activeItemElement;
+		},
+		stage: null,
+		get navigationLocked() {
+			return lightbox.navigationLocked;
+		},
+		getZoom: () => lightbox.activeZoom?.getZoom() ?? 1,
+		// A touch gesture: return focus to the trigger without a focus ring.
+		close: () => lightbox.setOpen(false, { focusVisible: false })
+	};
+	const pullAttachment = $derived(pullRuntime?.pullToDismiss(pullHost));
+	const live = $derived(lightbox.mounted && !parked);
 
 	// Keep focus inside while open: when it leaves for nowhere (a focused
 	// slide unmounted, a click on a non-focusable), pull it back.
@@ -271,6 +323,8 @@
 			? 'pointer-events: none;'
 			: ''}"
 		data-ramka-content=""
+		{@attach live && pullToClose ? pullAttachment : null}
+		{@attach live ? containTouchScroll : null}
 		data-open={lightbox.open ? '' : undefined}
 		data-closed={lightbox.open ? undefined : ''}
 		onkeydown={(event) => {
