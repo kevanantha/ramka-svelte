@@ -171,7 +171,10 @@
 		get dragTarget() {
 			return lightbox.destinationMorphElement ?? lightbox.activeItemElement;
 		},
-		stage: null,
+		// Stage scopes touch and wheel pull to the media pane; else Content.
+		get stage() {
+			return lightbox.stageElement;
+		},
 		get navigationLocked() {
 			return lightbox.navigationLocked;
 		},
@@ -232,18 +235,26 @@
 		// (WCAG 1.4.4 text resize), Alt/⌘ + arrows are history and caret moves.
 		if (event.metaKey || event.ctrlKey || event.altKey) return;
 
+		// With a Stage, media keys (zoom, pan, arrows / Home / End) act while
+		// focus is inside it or on Content itself; Escape stays dialog-wide.
+		const stage = lightbox.stageElement;
+		const focusOutsideStage = !!stage && !!target && target !== el && !stage.contains(target);
+
 		// Image zoom rides the bare keys: `+`/`=` in, `-`/`_` out, `0` resets.
 		const zoom = lightbox.activeZoom;
 		const zoomInKey = event.key === '+' || event.key === '=';
 		const zoomOutKey = event.key === '-' || event.key === '_';
 		if (zoomInKey || zoomOutKey || event.key === '0') {
 			event.preventDefault();
-			if (lightbox.navigationLocked || !zoom) return;
+			if (lightbox.navigationLocked || !zoom || focusOutsideStage) return;
 			if (zoomInKey) zoom.zoomIn();
 			else if (zoomOutKey) zoom.zoomOut();
 			else zoom.reset();
 			return;
 		}
+
+		const navKey = event.key.startsWith('Arrow') || event.key === 'Home' || event.key === 'End';
+		if (navKey && focusOutsideStage) return;
 
 		// While zoomed, arrows pan (physically, in both reading directions)
 		// instead of navigating.

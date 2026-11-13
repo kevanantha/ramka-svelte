@@ -202,6 +202,8 @@ export class LightboxState {
 	activeZoom = $state.raw<ActiveZoomControls | null>(null);
 	/** The `Lightbox.Content` element. Reactive: the zoom engine binds to it. */
 	dialogElement = $state.raw<HTMLElement | null>(null);
+	/** The `Lightbox.Stage` element, when one is mounted (zoom binds to it too). */
+	stageElement = $state.raw<HTMLElement | null>(null);
 
 	// ── Engine registries (read at event time; nothing renders from them) ──
 	/** Set by Slides while a user scroll/fling is in flight. */
@@ -216,7 +218,7 @@ export class LightboxState {
 	activeItemElement: HTMLElement | null = null;
 	/** Item → its designated morph descendant (`morph` → Media → image). */
 	readonly itemMorphElements = new WeakMap<HTMLElement, HTMLElement>();
-	/** Shared capture destination (Stage, not ported yet). */
+	/** Shared capture destination (Stage `morph`). */
 	destinationMorphElement: HTMLElement | null = null;
 	backdropElement: HTMLElement | null = null;
 	slidesViewport: HTMLElement | null = null;

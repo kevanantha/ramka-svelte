@@ -220,10 +220,11 @@ export class ZoomEngine {
 		});
 
 		// Gestures, on the active slide only. Wheel / Safari pinch attach to
-		// Content, so they wait for it to mount.
+		// Stage, else Content, so they wait for it to mount.
 		$effect(() => {
 			if (!host.isActive()) return;
 			const content = lightbox.dialogElement;
+			const stage = lightbox.stageElement;
 			const gestures = untrack(() =>
 				createZoomGestures({
 					container: host.container,
@@ -242,7 +243,7 @@ export class ZoomEngine {
 					},
 					actions: this.#session.actions,
 					contentElement: () => content,
-					stageElement: () => null,
+					stageElement: () => stage,
 					isScrolling: () => lightbox.navigationLocked
 				})
 			);
@@ -309,8 +310,9 @@ export class ZoomEngine {
 	#measureStageLayout = (): StageLayout | null => {
 		if (this.#layout) return this.#layout;
 		const stage = this.#host.container.getBoundingClientRect();
-		// Panning is bounded by Content (Stage is not ported yet).
-		const viewport = this.#host.lightbox.dialogElement?.getBoundingClientRect() ?? stage;
+		// Panning is bounded by Stage, else Content.
+		const { stageElement, dialogElement } = this.#host.lightbox;
+		const viewport = (stageElement ?? dialogElement)?.getBoundingClientRect() ?? stage;
 		const { w: contentW, h: contentH } = this.#contentSize(stage);
 		this.#layout = { stage, viewport, contentW, contentH };
 		if (!this.#layoutRaf) {

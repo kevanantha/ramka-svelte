@@ -19,6 +19,7 @@ export { default as Trigger } from './LightboxTrigger.svelte';
 export { default as Portal } from './LightboxPortal.svelte';
 export { default as Backdrop } from './LightboxBackdrop.svelte';
 export { default as Content } from './LightboxContent.svelte';
+export { default as Stage } from './LightboxStage.svelte';
 export { default as Close } from './LightboxClose.svelte';
 export { default as Slides } from './LightboxSlides.svelte';
 export { default as Slide } from './LightboxSlide.svelte';
@@ -43,6 +44,7 @@ export type {
 export type { LightboxPortalProps } from './LightboxPortal.svelte';
 export type { LightboxBackdropProps } from './LightboxBackdrop.svelte';
 export type { LightboxContentProps } from './LightboxContent.svelte';
+export type { LightboxStageProps, LightboxStageRenderState } from './LightboxStage.svelte';
 export type { LightboxCloseProps } from './LightboxClose.svelte';
 export type { LightboxSlidesProps } from './LightboxSlides.svelte';
 export type { LightboxSlideProps } from './LightboxSlide.svelte';
@@ -78,6 +80,7 @@ export {
 	LightboxTriggerDataAttributes,
 	LightboxPortalDataAttributes,
 	LightboxContentDataAttributes,
+	LightboxStageDataAttributes,
 	LightboxBackdropDataAttributes,
 	LightboxCloseDataAttributes,
 	LightboxItemDataAttributes,

@@ -135,7 +135,7 @@ interface ZoomGestureHost {
 	actions: ZoomGestureActions;
 	/** Lightbox.Content: hosts wheel / Safari GestureEvent zoom and `data-zooming`. */
 	contentElement: () => HTMLElement | null;
-	/** Lightbox.Stage (not ported yet); preferred over Content when set. */
+	/** Lightbox.Stage; preferred over Content when set. */
 	stageElement: () => HTMLElement | null;
 	/**
 	 * True while a `Lightbox.Slides` user scroll/fling is in flight. Gesture
