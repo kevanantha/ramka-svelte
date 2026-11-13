@@ -19,6 +19,9 @@ import { createZoomSession, type StageLayout, type ZoomSession } from './zoom-se
 const DEFAULT_MAX_ZOOM_FALLBACK = 4;
 const DEFAULT_ANIMATION_DURATION = 300;
 
+/** The controls each lightbox currently publishes as `activeZoom`. */
+const publishedZoom = new WeakMap<LightboxState, ActiveZoomControls>();
+
 /** Zoom's behavioural props, resolved (defaults applied) by the component. */
 export interface ZoomEngineOptions {
 	minZoom: number;
@@ -248,12 +251,18 @@ export class ZoomEngine {
 		});
 
 		// Publish to controls above the slides while this slide is active.
+		// The ownership check reads the plain `publishedZoom` map: a teardown
+		// that reads `activeZoom` sees its value from before this update, so
+		// navigating back would let the old slide clear the new one's controls.
 		$effect(() => {
 			if (!host.isActive()) return;
 			const controls = this.#activeControls();
+			publishedZoom.set(lightbox, controls);
 			lightbox.activeZoom = controls;
 			return () => {
-				if (lightbox.activeZoom === controls) lightbox.activeZoom = null;
+				if (publishedZoom.get(lightbox) !== controls) return;
+				publishedZoom.delete(lightbox);
+				lightbox.activeZoom = null;
 			};
 		});
 	}
