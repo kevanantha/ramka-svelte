@@ -243,9 +243,12 @@ export class LightboxState {
 
 	/** Effects that live for the Root's lifetime. Call from Root's script. */
 	connect(): void {
-		// Initially-open lightbox: acquire the lock; release on unmount.
+		// Initially-open lightbox: acquire the lock; release on unmount. Mount
+		// and unmount only (untracked): rerunning on `mounted` would release the
+		// lock as a close morph unmounts the portal, letting the page scroll
+		// behind the in-flight close. Later opens and closes lock themselves.
 		$effect(() => {
-			if (this.mounted && !this.preparing) this.#lockScroll();
+			if (untrack(() => this.mounted && !this.preparing)) this.#lockScroll();
 			return () => this.#unlockScroll();
 		});
 
