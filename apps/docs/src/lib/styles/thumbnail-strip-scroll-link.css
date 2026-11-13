@@ -1,0 +1,118 @@
+/**
+ * Docs-only thumbnail-strip cosmetics (default gallery chrome).
+ *
+ * Library ThumbnailStrip owns midline padding, overflow clip, and the
+ * ScrollTimeline → track transform link. Selection chrome here is a simple
+ * floating square. Aspect-morph nine-slice lives on the debug recipes page.
+ */
+
+.lightbox-demo-thumbnail-strip {
+	--lightbox-demo-thumb-h: 4.5rem;
+	--lightbox-demo-thumbnail-strip-fade: 40px;
+	align-self: stretch;
+	width: 100%;
+	min-width: 0;
+	/* Fits the floating indicator's overhang (3px gap + 2px stroke). */
+	padding-block: 0.3125rem;
+	/*
+   * Soft clip on both edges. Stops at 25/50/75% of the fade use smoothstep
+   * alphas (t²(3−2t)) so the dissolve eases in/out instead of a hard ramp.
+   */
+	-webkit-mask-image: linear-gradient(
+		to right,
+		rgb(0 0 0 / 0) 0,
+		rgb(0 0 0 / 0.156) calc(var(--lightbox-demo-thumbnail-strip-fade) * 0.25),
+		rgb(0 0 0 / 0.5) calc(var(--lightbox-demo-thumbnail-strip-fade) * 0.5),
+		rgb(0 0 0 / 0.844) calc(var(--lightbox-demo-thumbnail-strip-fade) * 0.75),
+		#000 var(--lightbox-demo-thumbnail-strip-fade),
+		#000 calc(100% - var(--lightbox-demo-thumbnail-strip-fade)),
+		rgb(0 0 0 / 0.844) calc(100% - var(--lightbox-demo-thumbnail-strip-fade) * 0.75),
+		rgb(0 0 0 / 0.5) calc(100% - var(--lightbox-demo-thumbnail-strip-fade) * 0.5),
+		rgb(0 0 0 / 0.156) calc(100% - var(--lightbox-demo-thumbnail-strip-fade) * 0.25),
+		rgb(0 0 0 / 0) 100%
+	);
+	mask-image: linear-gradient(
+		to right,
+		rgb(0 0 0 / 0) 0,
+		rgb(0 0 0 / 0.156) calc(var(--lightbox-demo-thumbnail-strip-fade) * 0.25),
+		rgb(0 0 0 / 0.5) calc(var(--lightbox-demo-thumbnail-strip-fade) * 0.5),
+		rgb(0 0 0 / 0.844) calc(var(--lightbox-demo-thumbnail-strip-fade) * 0.75),
+		#000 var(--lightbox-demo-thumbnail-strip-fade),
+		#000 calc(100% - var(--lightbox-demo-thumbnail-strip-fade)),
+		rgb(0 0 0 / 0.844) calc(100% - var(--lightbox-demo-thumbnail-strip-fade) * 0.75),
+		rgb(0 0 0 / 0.5) calc(100% - var(--lightbox-demo-thumbnail-strip-fade) * 0.5),
+		rgb(0 0 0 / 0.156) calc(100% - var(--lightbox-demo-thumbnail-strip-fade) * 0.25),
+		rgb(0 0 0 / 0) 100%
+	);
+}
+
+/*
+ * Hidden until the library has positioned the track against the Slides
+ * scroller (`data-positioned`, set in a layout effect before first client
+ * paint). Client-side opens carry the attribute on their first painted frame,
+ * so this never hides anything there. It only matters for pages that
+ * server-render an open lightbox (URL-synced state deep links): scroll/transform
+ * positions cannot be serialized into HTML, so the SSR'd strip sits at offset
+ * 0 until hydration — a strip pointing at the wrong photo reads as broken,
+ * a strip fading in a beat late reads as loading.
+ */
+.lightbox-demo-thumbnail-strip:not([data-positioned]) {
+	opacity: 0;
+}
+
+.lightbox-demo-thumbnail-strip[data-positioned] {
+	opacity: 1;
+	transition: opacity 200ms ease-out;
+}
+
+.lightbox-demo-thumbnail-strip [data-ramka-thumbnail-strip-track] {
+	display: flex;
+	width: max-content;
+	gap: 0.625rem;
+	align-items: center;
+}
+
+.lightbox-demo-thumbnail-strip [role='tab'] {
+	box-sizing: border-box;
+	position: relative;
+	display: block;
+	width: var(--lightbox-demo-thumb-h);
+	height: var(--lightbox-demo-thumb-h);
+	flex-shrink: 0;
+	overflow: hidden;
+	margin: 0;
+	border: 0;
+	border-radius: 0.5rem;
+	padding: 0;
+	appearance: none;
+	background: transparent;
+}
+
+.lightbox-demo-thumbnail-strip [role='tab'] img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	pointer-events: none;
+}
+
+/* Stationary midline square — same size as a thumb + 3px gap + 2px stroke. */
+.lightbox-demo-thumbnail-strip-indicator {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	box-sizing: border-box;
+	width: calc(var(--lightbox-demo-thumb-h) + 10px);
+	height: calc(var(--lightbox-demo-thumb-h) + 10px);
+	border-radius: calc(0.5rem + 3px);
+	border: 2px solid #000;
+	pointer-events: none;
+	transform: translate(-50%, -50%);
+}
+
+:is(.dark, [data-theme='dark']) .lightbox-demo-thumbnail-strip-indicator {
+	border-color: #fff;
+}
+
+/* Thumb-jump slides crossfade CSS is injected by the library — tune with
+   `--lightbox-select-vt-*` on Slides (or a parent). */

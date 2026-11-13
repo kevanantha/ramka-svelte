@@ -8,6 +8,7 @@
 @import '../lib/styles/chrome-insets.css';
 @import '../lib/styles/pull-progress.css';
 @import '../lib/styles/snug-slides.css';
+@import '../lib/styles/thumbnail-strip-scroll-link.css';
 
 @custom-variant dark (&:is(.dark *));
 

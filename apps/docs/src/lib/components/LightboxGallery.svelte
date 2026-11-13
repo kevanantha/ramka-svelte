@@ -1,7 +1,7 @@
 <!--
   The shared fullscreen viewer from the original docs: backdrop, Slides +
-  Media, Close (top-end), the Peek/Theater toggle, caption + counter and a
-  thumbnail row (desktop). Place beside Triggers under Lightbox.Root.
+  Media, Close (top-end), the Peek/Theater toggle, caption + counter and the
+  scroll-linked thumbnail strip (desktop). Place beside Triggers under Lightbox.Root.
 -->
 <script lang="ts">
 	import * as Lightbox from 'ramka-svelte/lightbox';
@@ -87,6 +87,9 @@
 		else document.startViewTransition(() => flushSync(flip));
 	}
 
+	// No strip → solo layout: tighter bottom band with the placard centered in it.
+	const showStrip = $derived(items.length > 1);
+
 	const backdropTone = $derived(
 		backdrop === 'solid' ? 'bg-white dark:bg-black' : 'lightbox-demo-backdrop-light'
 	);
@@ -98,7 +101,7 @@
 		aria-label={ariaLabel}
 		class="lightbox-demo-content fixed inset-0 flex flex-col overscroll-contain outline-none {snug
 			? 'lightbox-demo-content-snug'
-			: ''}"
+			: ''} {showStrip ? '' : 'lightbox-demo-content-solo'}"
 	>
 		<!-- Remount the track when the layout flips: the bleed/snug geometry
 		     (spacers, widths) shouldn't animate between. -->
@@ -121,13 +124,13 @@
 							: 'lightbox-demo-slide-pad h-full'}
 						style={snug ? `--lightbox-snug-ratio: ${ratio(item)};` : undefined}
 					>
-						<!-- With a thumbnail tablist the item is a tabpanel named by its tab;
-					     the aria-label covers the mobile (no tablist) shape. -->
+						<!-- Only the strip-less shape needs naming here: with a strip the
+						     item is a tabpanel already named by its thumbnail tab. -->
 						<Lightbox.Item
 							index={i}
 							caption={item.caption}
 							aria-roledescription="slide"
-							aria-label="{i + 1} of {items.length}"
+							aria-label={showStrip ? undefined : `${i + 1} of ${items.length}`}
 						>
 							<Lightbox.Zoom {maxZoom}>
 								<Lightbox.Media
@@ -194,7 +197,9 @@
 		</div>
 
 		<div
-			class="lightbox-demo-chrome-bottom lightbox-demo-chrome-hide pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col items-center gap-3 px-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
+			class="lightbox-demo-chrome-bottom lightbox-demo-chrome-hide {showStrip
+				? ''
+				: 'lightbox-demo-chrome-bottom-solo'} pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col items-center gap-3 px-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
 		>
 			<div class="flex max-w-full flex-col items-center text-center">
 				<Lightbox.Caption
@@ -208,25 +213,21 @@
 					</Lightbox.Counter>
 				{/if}
 			</div>
-			{#if items.length > 1}
-				<Lightbox.ThumbnailGroup
-					aria-label="Photo thumbnails"
-					class="pointer-events-auto hidden max-w-full [scrollbar-width:none] gap-1.5 overflow-x-auto px-2 py-1.5 md:flex"
+			{#if showStrip}
+				<!-- Visibility only (desktop); the linked layout and sync live in
+				     Lightbox.ThumbnailStrip. Square thumbs + a stationary midline square. -->
+				<Lightbox.ThumbnailStrip
+					class="lightbox-demo-thumbnail-strip pointer-events-auto hidden md:block"
 				>
-					{#each items as item, i (item.src)}
-						<Lightbox.Thumbnail
-							index={i}
-							class="size-14 shrink-0 overflow-hidden rounded-md opacity-60 outline-offset-2 transition-opacity hover:opacity-100 focus-visible:outline-2 focus-visible:outline-blue-500 data-active:opacity-100 data-active:outline-2 data-active:outline-neutral-900 dark:data-active:outline-white"
-						>
-							<img
-								src={item.thumb}
-								alt={item.alt}
-								draggable="false"
-								class="h-full w-full object-cover"
-							/>
-						</Lightbox.Thumbnail>
-					{/each}
-				</Lightbox.ThumbnailGroup>
+					<Lightbox.ThumbnailStripTrack aria-label="Photo thumbnails">
+						{#each items as item, i (item.src)}
+							<Lightbox.Thumbnail index={i}>
+								<img src={item.thumb} alt={item.alt} draggable="false" />
+							</Lightbox.Thumbnail>
+						{/each}
+					</Lightbox.ThumbnailStripTrack>
+					<span class="lightbox-demo-thumbnail-strip-indicator" aria-hidden="true"></span>
+				</Lightbox.ThumbnailStrip>
 			{/if}
 		</div>
 	</Lightbox.Content>
