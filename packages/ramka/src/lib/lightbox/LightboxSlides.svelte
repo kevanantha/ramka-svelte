@@ -279,10 +279,12 @@
 		let sawSingleFinger = false;
 		let singleFingerSlid = false;
 		let hadMultiTouch = false;
+		// A zoomed slide owns one-finger moves (pan), so they don't lock.
+		const isAtRestZoom = () => (lightbox.activeZoom?.getZoom() ?? 1) <= 1 + 1e-6;
 		const onTouchStart = (event: TouchEvent) => {
 			if (event.touches.length > 1) {
 				hadMultiTouch = true;
-				if (sawSingleFinger && singleFingerSlid) lockUserScroll();
+				if (sawSingleFinger && singleFingerSlid && isAtRestZoom()) lockUserScroll();
 				return;
 			}
 			if (event.touches.length === 1) {
@@ -301,7 +303,7 @@
 			const dy = touch.clientY - touchStartY;
 			if (Math.hypot(dx, dy) < TOUCH_LOCK_PX) return;
 			singleFingerSlid = true;
-			if (Math.abs(dx) >= Math.abs(dy)) lockUserScroll();
+			if (isAtRestZoom() && Math.abs(dx) >= Math.abs(dy)) lockUserScroll();
 		};
 		const onTouchEnd = (event: TouchEvent) => {
 			if (event.touches.length > 0) return;

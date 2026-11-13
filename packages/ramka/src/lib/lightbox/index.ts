@@ -30,6 +30,9 @@ export { default as Counter } from './LightboxCounter.svelte';
 export { default as Caption } from './LightboxCaption.svelte';
 export { default as ThumbnailGroup } from './LightboxThumbnailGroup.svelte';
 export { default as Thumbnail } from './LightboxThumbnail.svelte';
+export { default as Zoom } from './LightboxZoom.svelte';
+export { default as ZoomIn } from './LightboxZoomIn.svelte';
+export { default as ZoomOut } from './LightboxZoomOut.svelte';
 
 export type { LightboxRootProps } from './LightboxRoot.svelte';
 export type {
@@ -52,12 +55,20 @@ export type { LightboxCaptionProps } from './LightboxCaption.svelte';
 export type { LightboxThumbnailGroupProps } from './LightboxThumbnailGroup.svelte';
 export type { LightboxThumbnailProps } from './LightboxThumbnail.svelte';
 export type {
+	LightboxZoomProps,
+	LightboxZoomState,
+	LightboxZoomContext
+} from './LightboxZoom.svelte';
+export type { LightboxZoomInProps } from './LightboxZoomIn.svelte';
+export type { LightboxZoomOutProps } from './LightboxZoomOut.svelte';
+export type {
 	NavigationSource,
 	LightboxBeforeOpen,
 	LightboxBeforeOpenContext,
 	LightboxBeforeClose,
 	LightboxBeforeCloseContext,
-	LightboxCaptionContent
+	LightboxCaptionContent,
+	ActiveZoomControls
 } from './lightbox-state.svelte';
 export type { LightboxViewTransitionPreset } from './vt-timing';
 export type { TextDirection } from './lightbox-direction';
@@ -79,6 +90,9 @@ export {
 	LightboxCaptionDataAttributes,
 	LightboxThumbnailGroupDataAttributes,
 	LightboxThumbnailDataAttributes,
+	LightboxZoomDataAttributes,
+	LightboxZoomInDataAttributes,
+	LightboxZoomOutDataAttributes,
 	LightboxDocumentDataAttributes
 } from './lightbox-data-attributes';
 export { LightboxDocumentCssVars } from './lightbox-css-vars';

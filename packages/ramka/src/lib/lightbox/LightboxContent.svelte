@@ -82,6 +82,54 @@
 		});
 	}
 
+	// Block native pinch-zoom (touch and trackpad) on the whole document while
+	// mounted. Per-Zoom guards aren't enough: while the viewer is still hidden
+	// mid-open, a pinch lands on the page, zooms it natively, and the viewer's
+	// guards then trap it zoomed. Our own Zoom handlers still run —
+	// preventDefault only cancels the browser's default.
+	$effect(() => {
+		if (!lightbox.mounted || parked) return;
+		let pinching = false;
+		const onTouchMove = (event: TouchEvent) => {
+			// Two fingers: page pinch. A leftover finger after a pinch: native
+			// gallery scroll, which would lock Slides with no `scrollend`.
+			if (event.touches.length > 1 || pinching) event.preventDefault();
+		};
+		const onTouchStart = (event: TouchEvent) => {
+			if (event.touches.length > 1) pinching = true;
+		};
+		const onTouchEnd = (event: TouchEvent) => {
+			if (event.touches.length === 0) pinching = false;
+		};
+		// Safari pinches with GestureEvent; preventing it needs no wheel
+		// listener (a non-passive ancestor wheel listener kills Safari's
+		// momentum scrolling). Elsewhere trackpad pinch is ctrl+wheel.
+		const safari = 'GestureEvent' in window;
+		const onGesture = (event: Event) => event.preventDefault();
+		const onWheel = (event: WheelEvent) => {
+			if (event.ctrlKey) event.preventDefault();
+		};
+		document.addEventListener('touchmove', onTouchMove, { passive: false });
+		document.addEventListener('touchstart', onTouchStart, { passive: true });
+		document.addEventListener('touchend', onTouchEnd, { passive: true });
+		document.addEventListener('touchcancel', onTouchEnd, { passive: true });
+		if (safari) {
+			document.addEventListener('gesturestart', onGesture);
+			document.addEventListener('gesturechange', onGesture);
+		} else {
+			document.addEventListener('wheel', onWheel, { passive: false });
+		}
+		return () => {
+			document.removeEventListener('touchmove', onTouchMove);
+			document.removeEventListener('touchstart', onTouchStart);
+			document.removeEventListener('touchend', onTouchEnd);
+			document.removeEventListener('touchcancel', onTouchEnd);
+			document.removeEventListener('gesturestart', onGesture);
+			document.removeEventListener('gesturechange', onGesture);
+			document.removeEventListener('wheel', onWheel);
+		};
+	});
+
 	// Keep focus inside while open: when it leaves for nowhere (a focused
 	// slide unmounted, a click on a non-focusable), pull it back.
 	$effect(() => {
@@ -128,7 +176,39 @@
 		) {
 			return;
 		}
+		// Modified keys belong to the browser: ⌘/Ctrl + `+` `-` `0` is page zoom
+		// (WCAG 1.4.4 text resize), Alt/⌘ + arrows are history and caret moves.
 		if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+		// Image zoom rides the bare keys: `+`/`=` in, `-`/`_` out, `0` resets.
+		const zoom = lightbox.activeZoom;
+		const zoomInKey = event.key === '+' || event.key === '=';
+		const zoomOutKey = event.key === '-' || event.key === '_';
+		if (zoomInKey || zoomOutKey || event.key === '0') {
+			event.preventDefault();
+			if (lightbox.navigationLocked || !zoom) return;
+			if (zoomInKey) zoom.zoomIn();
+			else if (zoomOutKey) zoom.zoomOut();
+			else zoom.reset();
+			return;
+		}
+
+		// While zoomed, arrows pan (physically, in both reading directions)
+		// instead of navigating.
+		if (zoom && event.key.startsWith('Arrow') && zoom.getZoom() > 1) {
+			const d = zoom.keyboardPanDistance;
+			const [dx, dy] =
+				event.key === 'ArrowRight'
+					? [d, 0]
+					: event.key === 'ArrowLeft'
+						? [-d, 0]
+						: event.key === 'ArrowDown'
+							? [0, d]
+							: [0, -d];
+			event.preventDefault();
+			zoom.panBy(dx, dy);
+			return;
+		}
 
 		const itemCount = lightbox.itemCount;
 		if (itemCount === 0) return;

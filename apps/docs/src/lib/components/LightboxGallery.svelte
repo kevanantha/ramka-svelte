@@ -8,8 +8,16 @@
 	import X from '@lucide/svelte/icons/x';
 	import GalleryHorizontal from '@lucide/svelte/icons/gallery-horizontal';
 	import RectangleHorizontal from '@lucide/svelte/icons/rectangle-horizontal';
+	import ZoomIn from '@lucide/svelte/icons/zoom-in';
+	import ZoomOut from '@lucide/svelte/icons/zoom-out';
 	import { flushSync } from 'svelte';
-	import { chromeButton, chromeButtonMd } from './chrome';
+	import {
+		chromeButton,
+		chromeButtonGroup,
+		chromeButtonMd,
+		chromeButtonSegment,
+		chromeSegmentDivider
+	} from './chrome';
 	import type { GalleryItem } from '#lib/photos.js';
 
 	type SlidesLayout = 'bleed' | 'snug';
@@ -18,6 +26,8 @@
 		items,
 		ariaLabel,
 		preload = 3,
+		maxZoom = 6,
+		zoomControls = true,
 		backdrop = 'scrim',
 		slidesLayout = 'bleed',
 		layoutToggle = false
@@ -25,6 +35,9 @@
 		items: GalleryItem[];
 		ariaLabel: string;
 		preload?: number;
+		maxZoom?: number;
+		/** Desktop zoom −/+ buttons in the top chrome. */
+		zoomControls?: boolean;
 		/** `scrim` — translucent; `solid` — opaque page color. */
 		backdrop?: 'scrim' | 'solid';
 		/**
@@ -115,25 +128,24 @@
 							caption={item.caption}
 							aria-roledescription="slide"
 							aria-label="{i + 1} of {items.length}"
-							class="[container-type:size] flex items-center justify-center"
 						>
-							<!-- Item is the size container Media's fit-box resolves against
-						     (Lightbox.Zoom plays that role in the original; not ported yet). -->
-							<Lightbox.Media
-								width={item.width}
-								height={item.height}
-								class="overflow-hidden rounded-none after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded-[inherit] md:rounded-lg md:after:shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.1)] md:dark:after:shadow-[inset_0_0_0_0.5px_rgba(255,255,255,0.12)]"
-							>
-								<img
-									src={item.src}
-									alt={item.alt}
+							<Lightbox.Zoom {maxZoom}>
+								<Lightbox.Media
 									width={item.width}
 									height={item.height}
-									loading="eager"
-									draggable="false"
-									class="select-none"
-								/>
-							</Lightbox.Media>
+									class="overflow-hidden rounded-none after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded-[inherit] md:rounded-lg md:after:shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.1)] md:dark:after:shadow-[inset_0_0_0_0.5px_rgba(255,255,255,0.12)]"
+								>
+									<img
+										src={item.src}
+										alt={item.alt}
+										width={item.width}
+										height={item.height}
+										loading="eager"
+										draggable="false"
+										class="select-none"
+									/>
+								</Lightbox.Media>
+							</Lightbox.Zoom>
 						</Lightbox.Item>
 					</Lightbox.Slide>
 				{/each}
@@ -160,6 +172,21 @@
 						<RectangleHorizontal aria-hidden="true" class="h-4 w-4" strokeWidth={2.25} />
 					{/if}
 				</button>
+			{/if}
+			{#if zoomControls}
+				<!-- Zoom −/+ share one capsule with a hairline divider. -->
+				<div class={chromeButtonGroup}>
+					<Lightbox.ZoomOut class={chromeButtonSegment} aria-label="Zoom out" title="Zoom out">
+						<ZoomOut aria-hidden="true" class="h-4 w-4" strokeWidth={2.25} />
+					</Lightbox.ZoomOut>
+					<Lightbox.ZoomIn
+						class="{chromeButtonSegment} {chromeSegmentDivider}"
+						aria-label="Zoom in"
+						title="Zoom in"
+					>
+						<ZoomIn aria-hidden="true" class="h-4 w-4" strokeWidth={2.25} />
+					</Lightbox.ZoomIn>
+				</div>
 			{/if}
 			<Lightbox.Close class={chromeButton} aria-label="Close" title="Close">
 				<X aria-hidden="true" class="h-[18px] w-[18px]" strokeWidth={2.25} />

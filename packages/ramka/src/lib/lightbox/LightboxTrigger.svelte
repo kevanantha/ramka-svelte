@@ -53,6 +53,7 @@
 <script lang="ts">
 	import { getLightboxContext } from './lightbox-state.svelte';
 	import { prefetchMorphRuntime } from './lightbox-morph-loader';
+	import { prefetchZoomRuntime } from './lightbox-zoom-loader';
 	import { ensureLibrarySheet } from './vt-style-sheets';
 	import { MORPH_TARGET_HIDE_CSS, MORPH_TARGET_HIDE_MARKER } from './morph-target-hide';
 	import { LightboxTriggerDataAttributes } from './lightbox-data-attributes';
@@ -159,6 +160,7 @@
 	// Intent warm-up: hover, focus and pointerdown all prefetch the morph chunk.
 	function warmEngines() {
 		if (lightbox.viewTransition) prefetchMorphRuntime();
+		prefetchZoomRuntime();
 	}
 
 	const renderState: LightboxTriggerRenderState = {

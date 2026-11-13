@@ -8,13 +8,14 @@
 
 Work in progress. Ported so far:
 
-- **Morph view transitions.** The original's morph engine (`use-view-transition-morph.ts`, composited morph, timing presets, name isolation, touch guard) runs unchanged, driven by Svelte's `flushSync`.
+- **Morph view transitions.** The original's morph engine (`view-transition-morph.ts`, composited morph, timing presets, name isolation, touch guard), driven by Svelte's `flushSync` and reading the lightbox through live getters.
 - **Native scrolling.** `Slides` / `Slide` ride CSS scroll snapping, with the original's fling lock, `scrollend` settle and resize re-parking.
 - **Dialog shell.** `Root`, `Trigger`, `Portal`, `Backdrop`, `Content` (focus trap, Escape, arrow / Home / End keys, scrim click), `Close`.
 - **Media.** `Item` (preload window, tab/tabpanel or slide ARIA, canvas placeholder bridge), `Media` (fit-box sizing).
 - **Chrome.** `Previous`, `Next`, `Counter`, `Caption`, `ThumbnailGroup`, `Thumbnail`.
+- **Zoom.** `Zoom`, `ZoomIn`, `ZoomOut`: pinch, double-tap/click, ctrl/trackpad wheel, drag with momentum and rubber-banding, and `+` `-` `0` / arrow keys through `Content`. The gesture maths, pose controller and zoom session are the original's; the engine loads as a separate chunk, as in the original.
 
-Not ported yet: `Zoom` / `ZoomIn` / `ZoomOut` (pinch to zoom), pull to dismiss, `Stage`, `ThumbnailStrip`, `createHandle`, `CSPProvider`, the docs pages, presets and tests.
+Not ported yet: pull to dismiss, `Stage`, `ThumbnailStrip`, `createHandle`, `CSPProvider`, the docs pages, presets and tests.
 
 ## Usage
 
@@ -58,7 +59,7 @@ Differences from the React API:
 - `open` and `value` are bindable (`bind:open`, `bind:value`) instead of `open` / `defaultOpen` / `onOpenChange` pairs. The `onOpenChange`, `onOpenChangeComplete` and `onValueChange` callbacks still exist.
 - Render functions are snippets, and `imageRef` / `morphRef` are attachments named `image` / `morph`: `{@attach image}` instead of `ref={imageRef}`.
 - Parts take a bindable `ref` (`bind:ref`) for their element, and wrappers read state with `getLightboxContext()` (built on `createContext`, so Svelte ≥ 5.40).
-- `Media` resolves its fit-box against the nearest size container. Until `Zoom` is ported, give the `Item` `container-type: size` (the docs viewer does).
+- `Media` resolves its fit-box against the nearest size container, normally `Lightbox.Zoom` (Item → Zoom → Media, as in the original). Without Zoom, give the `Item` `container-type: size`.
 
 ## Development
 

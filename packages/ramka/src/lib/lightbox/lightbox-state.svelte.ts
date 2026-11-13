@@ -30,6 +30,7 @@ import {
 	prefetchMorphRuntime
 } from './lightbox-morph-loader';
 import { findDestinationMorphTarget } from './morph-target';
+import { prefetchZoomRuntime } from './lightbox-zoom-loader';
 import { isAndroidBlinkSnapshotRoot } from './is-android-blink';
 import { shouldYieldBeforeCapture } from './vt-capture-yield';
 import { scheduleWarmUp } from './schedule-warm-up';
@@ -74,6 +75,29 @@ export type LightboxBeforeClose = (ctx: LightboxBeforeCloseContext) => void;
 
 /** A caption registered by `Lightbox.Item`: plain text or a snippet. */
 export type LightboxCaptionContent = string | Snippet;
+
+/**
+ * The active slide's zoom, published by its `Lightbox.Zoom` so controls that
+ * live above every slide (ZoomIn / ZoomOut in the chrome, Content's keys,
+ * Slides' swipe lock, the close morph) can drive it. Reads are live.
+ */
+export interface ActiveZoomControls {
+	readonly canZoomIn: boolean;
+	readonly canZoomOut: boolean;
+	zoomIn(): void;
+	zoomOut(): void;
+	/**
+	 * Reset to the minimum zoom. `true` replaces the pose synchronously (no
+	 * animation) — the Firefox zoomed-close workaround before capture.
+	 */
+	reset(rapid?: boolean): void;
+	/** Glide the pan by content-space px (instant under reduced motion). */
+	panBy(dx: number, dy: number): void;
+	/** The slide's keyboard pan step, in content px. */
+	readonly keyboardPanDistance: number;
+	/** Live zoom level, including mid-animation (1 = not zoomed). */
+	getZoom(): number;
+}
 
 /**
  * The Root's props, as an object of getters (and setters for the bindable
@@ -174,6 +198,10 @@ export class LightboxState {
 	 * its morph placeholder until then (clearing it mid-morph flashes on iOS).
 	 */
 	openTransitionPending = $state(false);
+	/** The active slide's zoom (see `ActiveZoomControls`), when it has one. */
+	activeZoom = $state.raw<ActiveZoomControls | null>(null);
+	/** The `Lightbox.Content` element. Reactive: the zoom engine binds to it. */
+	dialogElement = $state.raw<HTMLElement | null>(null);
 
 	// ── Engine registries (read at event time; nothing renders from them) ──
 	/** Set by Slides while a user scroll/fling is in flight. */
@@ -190,7 +218,6 @@ export class LightboxState {
 	readonly itemMorphElements = new WeakMap<HTMLElement, HTMLElement>();
 	/** Shared capture destination (Stage, not ported yet). */
 	destinationMorphElement: HTMLElement | null = null;
-	dialogElement: HTMLElement | null = null;
 	backdropElement: HTMLElement | null = null;
 	slidesViewport: HTMLElement | null = null;
 	slidesGeometry: SlidesGeometry = { offsets: [], base: 0, step: 1, count: 0 };
@@ -338,6 +365,9 @@ export class LightboxState {
 
 		if (nextOpen) {
 			this.openTransitionPending = true;
+			// Request Zoom with the open rather than waiting for Zoom to mount,
+			// so gestures are live as early as the network allows.
+			prefetchZoomRuntime();
 		} else {
 			this.#settleOpenTransition();
 			this.#notifyBeforeClose();
@@ -525,8 +555,9 @@ export class LightboxState {
 				}
 				state.#props.onOpenChangeComplete?.(false);
 			},
-			// Zoom is not ported yet; the Firefox zoom reset has nothing to reset.
-			activeZoom: null
+			get activeZoom() {
+				return state.activeZoom;
+			}
 		};
 	}
 
