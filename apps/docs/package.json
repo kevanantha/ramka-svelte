@@ -20,6 +20,7 @@
 		"docs:api:check": "node scripts/generate-lightbox-api.ts --check"
 	},
 	"devDependencies": {
+		"@stylexjs/stylex": "^0.19.2",
 		"@sveltejs/adapter-static": "^4.0.0",
 		"@sveltejs/enhanced-img": "^1.0.1",
 		"@sveltejs/kit": "^3.0.0",

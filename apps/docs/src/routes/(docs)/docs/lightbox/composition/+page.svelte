@@ -17,12 +17,14 @@
 	import mediaFitBox from 'excerpt:excerpts/media-fit-box.svelte';
 	import slideTrack from 'excerpt:excerpts/slide-track.css';
 	import slidesNesting from 'excerpt:excerpts/slides-nesting.svelte';
+	import stylexAttrs from 'excerpt:excerpts/stylex-attrs.svelte';
 
 	const toc: DocsTocItem[] = [
 		{ id: 'slides', title: 'Slides + Zoom' },
 		{ id: 'media-layout', title: 'Media layout' },
 		{ id: 'stage', title: 'Stage (split layouts)' },
 		{ id: 'chrome', title: 'Chrome' },
+		{ id: 'stylex', title: 'Styling with StyleX' },
 		{ id: 'item-count', title: 'Dynamic itemCount' }
 	];
 </script>
@@ -203,6 +205,42 @@
 		</p>
 		<CodeBlock excerpt={chromeComposition} />
 		<p>Packaged as a skin: <DocsLink href="/presets/default">Default preset</DocsLink>.</p>
+	</DocsSection>
+
+	<DocsSection id="stylex" title="Styling with StyleX">
+		<p>
+			Parts are unstyled and pass <code class="text-xs">class</code>,
+			<code class="text-xs">style</code>, and every other attribute through to their element, so
+			<code class="text-xs">{'{...stylex.attrs(styles.x)}'}</code> works on every part as is. There
+			is no <code class="text-xs">sx</code> prop, and ramka has no StyleX dependency. Compile StyleX
+			with <code class="text-xs">@stylexjs/unplugin</code> as in StyleX's
+			<DocsLink href="https://stylexjs.com/docs/learn/installation/vite/sveltekit"
+				>SvelteKit guide</DocsLink
+			>: its <code class="text-xs">enforce: undefined</code> makes the plugin run on compiled Svelte
+			output instead of the raw <code class="text-xs">.svelte</code> source.
+		</p>
+		<ul class="list-disc space-y-2 pl-5">
+			<li>
+				Structural styles (for example Slides' <code class="text-xs">display: flex</code> and
+				<code class="text-xs">scroll-snap-type</code>, or Media's fit-box) are inline, so a StyleX
+				class cannot override them. Override one with <code class="text-xs">!important</code> in a global
+				stylesheet.
+			</li>
+			<li>
+				Style state through the published data attributes —
+				<code class="text-xs">data-open</code> / <code class="text-xs">data-closed</code> on
+				<DocsLink href={api.content}>Content</DocsLink> and
+				<DocsLink href={api.backdrop}>Backdrop</DocsLink>, <code class="text-xs">data-active</code>
+				on Item, and the rest in the <DocsLink href={pages.api.href}>API reference</DocsLink> — with StyleX
+				conditions such as <code class="text-xs">':is([data-open])'</code>, or with a global class.
+			</li>
+			<li>
+				To mix in a global class, pass both to <code class="text-xs">class</code>:
+				<code class="text-xs">{"class={['my-class', stylex.attrs(styles.x).class]}"}</code>. A
+				spread and a separate <code class="text-xs">class</code> attribute would replace one another.
+			</li>
+		</ul>
+		<CodeBlock excerpt={stylexAttrs} />
 	</DocsSection>
 
 	<DocsSection id="item-count" title="Dynamic itemCount">
