@@ -2,10 +2,13 @@ import tailwindcss from '@tailwindcss/vite';
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
+import { slowImage } from './src/lib/server/slow-image';
 
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
+		// /api/slow-image for the debug and guide demos (dev + preview only).
+		slowImage(),
 		sveltekit({
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
