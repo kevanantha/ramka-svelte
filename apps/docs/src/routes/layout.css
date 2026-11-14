@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
 @import '@fontsource-variable/inter';
 
 /* Docs-only lightbox skin (the library ships no CSS). Ported from the
