@@ -24,6 +24,8 @@ export default defineConfig({
 						console.warn(`[prerender] ${path} (linked from ${referrer}) is not ported yet`);
 						return;
 					}
+					// Dev-only debug pages 404 in production, so no file is written.
+					if (status === 404 && path.startsWith('/debug/')) return;
 					throw new Error(message);
 				}
 			},
