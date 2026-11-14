@@ -17,6 +17,8 @@
 	],
 	"files": [
 		"dist",
+		"LICENSE",
+		"THIRD-PARTY-NOTICES.md",
 		"!dist/**/*.test.*",
 		"!dist/**/*.spec.*"
 	],
