@@ -61,7 +61,7 @@
 		/** Thumbnail strip on desktop (multi-item galleries), or `never`. */
 		thumbnails?: 'desktop' | 'never';
 		/** Custom slide content (video, 3D, …) in place of Zoom + Media + img. */
-		slide?: Snippet<[item: GalleryItem, index: number]>;
+		slide?: Snippet<[item: GalleryItem, index: number, state: Lightbox.LightboxItemRenderState]>;
 		/**
 		 * Forwarded to `Lightbox.Portal`, e.g. `{ container: null }` to render
 		 * in place so a prerendered page can ship the viewer already open.
@@ -166,9 +166,9 @@
 							aria-roledescription="slide"
 							aria-label={showStrip ? undefined : `${i + 1} of ${items.length}`}
 						>
-							{#snippet children()}
+							{#snippet children(state)}
 								{#if slide}
-									{@render slide(item, i)}
+									{@render slide(item, i, state)}
 								{:else}
 									<Lightbox.Zoom {maxZoom}>
 										<Lightbox.Media

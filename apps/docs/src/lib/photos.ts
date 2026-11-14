@@ -137,3 +137,44 @@ export const ramkaN = photo(
 	'Husky dog in a harness looking into the distance',
 	'Husky on the lookout'
 );
+
+/**
+ * The original docs' `_data/images.generated.ts` lightbox set (lb1–lb6,
+ * 1200×800), used by the minimal-composition and heavy-feed debug pages.
+ */
+export interface LightboxImageFile {
+	src: string;
+	thumb: string;
+	width: number;
+	height: number;
+}
+
+export const lightboxImageFiles: LightboxImageFile[] = [1, 2, 3, 4, 5, 6].map((n) => ({
+	src: `/photos/lb${n}.jpg`,
+	thumb: `/photos/thumbs/lb${n}.jpg`,
+	width: 1200,
+	height: 800
+}));
+
+/** Real-estate listing photos (original docs' prop-*.jpg). */
+const PROPERTY = 'The Olive Grove Residence';
+function property(file: string, width: number, height: number, alt: string, label: string) {
+	return {
+		...photo(file, width, height, alt, `${label} — ${PROPERTY}`),
+		id: file,
+		label
+	};
+}
+
+export const propertyPhotos = [
+	property('prop-hero', 1400, 900, 'Living room with floor-to-ceiling windows', 'Living Room'),
+	property('prop-kitchen', 1400, 900, 'Modern kitchen with marble island', 'Kitchen'),
+	property('prop-bed', 900, 1400, 'Primary bedroom with en-suite balcony', 'Primary Bedroom'),
+	property('prop-bath', 900, 1400, 'Spa-style bathroom with freestanding tub', 'Bathroom'),
+	property('prop-terrace', 1400, 900, 'Rooftop terrace with city views', 'Terrace'),
+	property('prop-dining', 1400, 900, 'Dining area with designer lighting', 'Dining'),
+	property('prop-office', 900, 1200, 'Home office with built-in shelving', 'Office'),
+	property('prop-pool', 1400, 900, 'Infinity pool overlooking the valley', 'Pool'),
+	property('prop-garden', 1400, 900, 'Landscaped garden with mature olive trees', 'Garden'),
+	property('prop-ext', 900, 1400, 'Front elevation at dusk with warm lighting', 'Exterior')
+];
