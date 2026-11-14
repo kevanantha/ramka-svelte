@@ -20,11 +20,17 @@
 			<p
 				class="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-pretty text-neutral-500 md:text-xl dark:text-neutral-400"
 			>
-				Unstyled, accessible primitives built on native scrolling and view transitions. Morph and
-				swipe, out of the box.
+				Unstyled, accessible primitives built on native scrolling and view transitions. Morph,
+				swipe, zoom, and pull-to-dismiss, all out of the box.
 			</p>
 
 			<div class="mt-10 flex flex-wrap items-center justify-center gap-3">
+				<a
+					href="/docs"
+					class="inline-flex h-11 items-center rounded-full bg-neutral-900 px-4 text-sm font-medium text-white transition hover:bg-neutral-700 dark:bg-neutral-50 dark:text-neutral-900 dark:hover:bg-neutral-300"
+				>
+					Documentation
+				</a>
 				<a
 					href={GITHUB_URL}
 					target="_blank"
@@ -32,7 +38,7 @@
 					class="inline-flex h-11 items-center gap-2 rounded-full border border-neutral-200 px-4 text-sm font-medium text-neutral-900 transition hover:bg-neutral-100 dark:border-neutral-800 dark:text-neutral-50 dark:hover:bg-neutral-900"
 				>
 					<GitHubIcon class="h-4 w-4" />
-					Source
+					GitHub
 				</a>
 			</div>
 
