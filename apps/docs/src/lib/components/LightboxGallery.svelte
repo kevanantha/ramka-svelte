@@ -2,6 +2,7 @@
   The shared fullscreen viewer from the original docs: backdrop, Slides +
   Media, Close (top-end), the Peek/Theater toggle, caption + counter and the
   scroll-linked thumbnail strip (desktop). Place beside Triggers under Lightbox.Root.
+  The `slide` snippet replaces the default Zoom + Media + img of each item.
 -->
 <script lang="ts">
 	import * as Lightbox from 'ramka-svelte/lightbox';
@@ -10,7 +11,7 @@
 	import RectangleHorizontal from '@lucide/svelte/icons/rectangle-horizontal';
 	import ZoomIn from '@lucide/svelte/icons/zoom-in';
 	import ZoomOut from '@lucide/svelte/icons/zoom-out';
-	import { flushSync } from 'svelte';
+	import { flushSync, type Snippet } from 'svelte';
 	import {
 		chromeButton,
 		chromeButtonGroup,
@@ -30,7 +31,9 @@
 		zoomControls = true,
 		backdrop = 'scrim',
 		slidesLayout = 'bleed',
-		layoutToggle = false
+		layoutToggle = false,
+		thumbnails = 'desktop',
+		slide
 	}: {
 		items: GalleryItem[];
 		ariaLabel: string;
@@ -50,6 +53,10 @@
 		 * first-visit default; the user's choice persists in localStorage.
 		 */
 		layoutToggle?: boolean;
+		/** Thumbnail strip on desktop (multi-item galleries), or `never`. */
+		thumbnails?: 'desktop' | 'never';
+		/** Custom slide content (video, 3D, …) in place of Zoom + Media + img. */
+		slide?: Snippet<[item: GalleryItem, index: number]>;
 	} = $props();
 
 	// Same key as the original docs, so the preference carries over.
@@ -88,7 +95,7 @@
 	}
 
 	// No strip → solo layout: tighter bottom band with the placard centered in it.
-	const showStrip = $derived(items.length > 1);
+	const showStrip = $derived(thumbnails !== 'never' && items.length > 1);
 
 	const backdropTone = $derived(
 		backdrop === 'solid' ? 'bg-white dark:bg-black' : 'lightbox-demo-backdrop-light'
@@ -132,23 +139,29 @@
 							aria-roledescription="slide"
 							aria-label={showStrip ? undefined : `${i + 1} of ${items.length}`}
 						>
-							<Lightbox.Zoom {maxZoom}>
-								<Lightbox.Media
-									width={item.width}
-									height={item.height}
-									class="overflow-hidden rounded-none after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded-[inherit] md:rounded-lg md:after:shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.1)] md:dark:after:shadow-[inset_0_0_0_0.5px_rgba(255,255,255,0.12)]"
-								>
-									<img
-										src={item.src}
-										alt={item.alt}
-										width={item.width}
-										height={item.height}
-										loading="eager"
-										draggable="false"
-										class="select-none"
-									/>
-								</Lightbox.Media>
-							</Lightbox.Zoom>
+							{#snippet children()}
+								{#if slide}
+									{@render slide(item, i)}
+								{:else}
+									<Lightbox.Zoom {maxZoom}>
+										<Lightbox.Media
+											width={item.width}
+											height={item.height}
+											class="overflow-hidden rounded-none after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded-[inherit] md:rounded-lg md:after:shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.1)] md:dark:after:shadow-[inset_0_0_0_0.5px_rgba(255,255,255,0.12)]"
+										>
+											<img
+												src={item.src}
+												alt={item.alt}
+												width={item.width}
+												height={item.height}
+												loading="eager"
+												draggable="false"
+												class="select-none"
+											/>
+										</Lightbox.Media>
+									</Lightbox.Zoom>
+								{/if}
+							{/snippet}
 						</Lightbox.Item>
 					</Lightbox.Slide>
 				{/each}
