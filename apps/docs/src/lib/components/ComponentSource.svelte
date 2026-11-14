@@ -70,7 +70,7 @@
 				<div
 					role="tablist"
 					aria-orientation="horizontal"
-					class="inline-flex h-8 w-fit max-w-full flex-wrap items-center justify-start rounded-[0.625rem] bg-neutral-100 p-[3px] text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
+					class="inline-flex h-8 w-fit max-w-full [scrollbar-width:none] items-center justify-start overflow-x-auto rounded-[0.625rem] bg-neutral-100 p-[3px] text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400 [&::-webkit-scrollbar]:hidden"
 				>
 					{#each sections as section, s (s)}
 						{#if s > 0}
