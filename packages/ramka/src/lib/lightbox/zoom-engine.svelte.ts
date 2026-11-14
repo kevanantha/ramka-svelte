@@ -124,7 +124,8 @@ export class ZoomEngine {
 	zoomTo = (target: number, options?: { rapid?: boolean; dx?: number; dy?: number }) =>
 		this.#session.changeZoom(target, options?.rapid ?? false, options?.dx, options?.dy);
 	reset = (rapid?: boolean) => this.#session.reset(rapid);
-	changeOffsets = (dx: number, dy: number) => this.#session.changeOffsets(dx, dy);
+	// Every argument, like ramka's context (`overscroll` reaches the rubber band).
+	changeOffsets: ZoomSession['changeOffsets'] = (...args) => this.#session.changeOffsets(...args);
 
 	destroy(): void {
 		this.#destroyEffects();
@@ -209,6 +210,10 @@ export class ZoomEngine {
 		// Content chrome: `data-zoomed` + `--lightbox-zoom-progress`.
 		$effect(() => {
 			const { minZoom } = host.options();
+			// Re-bind after each committed zoom, as ramka's effect does (`zoom` is
+			// in its deps): a pose replace notifies before its commit snapshot
+			// updates, so a rapid reset would otherwise leave `data-zoomed` set.
+			void this.zoom;
 			return bindZoomChrome({
 				controller: this.#controller,
 				dialogElement: lightbox.dialogElement,

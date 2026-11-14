@@ -41,6 +41,9 @@
 	}: LightboxMediaProps = $props();
 
 	const item = getLightboxItemContext();
+	// ramka gives every Media host an id (`id ?? useId()`); a consumer `id` in
+	// `rest` still wins.
+	const autoId = $props.id();
 
 	let autoDims = $state<{ width: number; height: number } | null>(null);
 	let wiredImage: HTMLImageElement | null = null;
@@ -156,6 +159,7 @@
 
 <div
 	bind:this={ref}
+	id={autoId}
 	data-width={hasFitBox ? width : undefined}
 	data-height={hasFitBox ? height : undefined}
 	data-placeholder={item?.mediaPlaceholder ? '' : undefined}

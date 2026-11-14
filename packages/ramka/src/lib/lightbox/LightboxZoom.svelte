@@ -22,8 +22,12 @@
 		zoomTo(target: number, options?: { rapid?: boolean; dx?: number; dy?: number }): void;
 		/** Back to `minZoom`; `true` skips the animation. */
 		reset(rapid?: boolean): void;
-		/** Pan by content-space px (positive moves the content left/up). */
-		changeOffsets(dx: number, dy: number): void;
+		/**
+		 * Pan by content-space px (positive moves the content left/up).
+		 * `overscroll` lets the pan run past the bounds on the rubber band, and
+		 * `overflowAxesOnly` limits that to the axes the content overflows.
+		 */
+		changeOffsets(dx: number, dy: number, overscroll?: boolean, overflowAxesOnly?: boolean): void;
 	}
 
 	/**
@@ -178,9 +182,31 @@
 		zoomOut: () => engine?.zoomOut(),
 		zoomTo: (target, opts) => engine?.zoomTo(target, opts),
 		reset: (rapid) => engine?.reset(rapid),
-		changeOffsets: (dx, dy) => engine?.changeOffsets(dx, dy)
+		changeOffsets: (...args) => engine?.changeOffsets(...args)
 	};
 	setZoomContext(zoomContext);
+
+	// Imperative handle, ramka's `LightboxZoomRef`, through `bind:this`. Unlike
+	// the context's committed state, `getPose()` is live: mid-gesture and
+	// mid-animation.
+	export function getPose(): { zoom: number; offsetX: number; offsetY: number } {
+		return engine?.getPose() ?? { zoom: minZoom, offsetX: 0, offsetY: 0 };
+	}
+	export function zoomIn(): void {
+		engine?.zoomIn();
+	}
+	export function zoomOut(): void {
+		engine?.zoomOut();
+	}
+	export function zoomTo(
+		target: number,
+		options?: { rapid?: boolean; dx?: number; dy?: number }
+	): void {
+		engine?.zoomTo(target, options);
+	}
+	export function reset(rapid?: boolean): void {
+		engine?.reset(rapid);
+	}
 
 	const hostStyle = $derived(
 		'position: relative; width: 100%; height: 100%; container-type: size; ' +
