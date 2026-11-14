@@ -29,9 +29,9 @@
 	bind:this={ref}
 	aria-live="polite"
 	aria-atomic="true"
+	data-has-caption={hasCaption ? '' : undefined}
 	{...rest}
 	data-ramka-caption=""
-	data-has-caption={hasCaption ? '' : undefined}
 >
 	{#if typeof caption === 'string'}
 		{caption}

@@ -156,13 +156,13 @@
 
 <div
 	bind:this={ref}
+	data-width={hasFitBox ? width : undefined}
+	data-height={hasFitBox ? height : undefined}
+	data-placeholder={item?.mediaPlaceholder ? '' : undefined}
 	{...rest}
 	style="position: relative; flex-shrink: 0; display: grid; isolation: isolate;{fitBoxStyle}{style ??
 		''}"
 	data-ramka-media=""
-	data-width={hasFitBox ? width : undefined}
-	data-height={hasFitBox ? height : undefined}
-	data-placeholder={item?.mediaPlaceholder ? '' : undefined}
 >
 	{@render children?.()}
 </div>

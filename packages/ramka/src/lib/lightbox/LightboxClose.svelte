@@ -23,7 +23,6 @@
 	data-ramka-close=""
 	onclick={(event) => {
 		onclick?.(event);
-		if (event.defaultPrevented) return;
 		// `detail === 0` — activated by keyboard, so return focus with a ring.
 		lightbox.setOpen(false, { focusVisible: event.detail === 0 });
 	}}

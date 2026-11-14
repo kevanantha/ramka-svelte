@@ -26,14 +26,14 @@
 	bind:this={ref}
 	{@attach accessibleNameWarning('Lightbox.ZoomOut')}
 	type="button"
-	{...rest}
 	{disabled}
-	data-ramka-zoom-out=""
 	data-disabled={disabled ? '' : undefined}
+	{...rest}
+	data-ramka-zoom-out=""
 	onclick={(event) => {
 		onclick?.(event);
 		// A Slides swipe is in flight: don't let the click hijack it.
-		if (event.defaultPrevented || lightbox.navigationLocked) return;
+		if (event.currentTarget.disabled || lightbox.navigationLocked) return;
 		zoom?.zoomOut();
 	}}
 >

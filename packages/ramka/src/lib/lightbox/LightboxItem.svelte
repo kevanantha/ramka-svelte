@@ -291,13 +291,13 @@
 		id="{lightbox.baseId}-panel-{index}"
 		{...semantics}
 		aria-hidden={!active}
-		inert={!active}
-		{...rest}
-		style="width: 100%; height: 100%;{active ? ' will-change: transform;' : ''}{style ?? ''}"
-		data-ramka-item=""
+		inert={!active || undefined}
 		data-active={active ? '' : undefined}
 		data-index={index}
 		data-ssr-active={!BROWSER && active ? '' : undefined}
+		{...rest}
+		style="width: 100%; height: 100%;{active ? ' will-change: transform;' : ''}{style ?? ''}"
+		data-ramka-item=""
 	>
 		{@render children?.({ active, visible, index, image, morph })}
 	</div>

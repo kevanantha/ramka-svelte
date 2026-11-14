@@ -39,18 +39,18 @@
 	<div
 		bind:this={ref}
 		aria-hidden="true"
-		inert={parked}
-		{...rest}
-		style="{style ?? ''};{lightbox.preparing || parked ? 'visibility: hidden;' : ''}{parked
-			? 'pointer-events: none;'
-			: ''}"
-		data-ramka-backdrop=""
-		{@attach lightbox.mounted && !parked ? containTouchScroll : null}
+		inert={parked || undefined}
 		data-open={lightbox.open ? '' : undefined}
 		data-closed={lightbox.open ? undefined : ''}
+		{...rest}
+		style="{style ? `${style};` : ''}{lightbox.preparing || parked
+			? 'visibility: hidden;'
+			: ''}{parked ? 'pointer-events: none;' : ''}"
+		data-ramka-backdrop=""
+		{@attach lightbox.mounted && !parked ? containTouchScroll : null}
 		onclick={(event) => {
 			onclick?.(event);
-			if (event.defaultPrevented || !lightbox.mounted) return;
+			if (!lightbox.mounted) return;
 			lightbox.setOpen(false, { focusVisible: false });
 		}}
 	>

@@ -200,11 +200,11 @@
 
 <div
 	bind:this={ref}
+	data-zoom={zoom > 1 ? '' : undefined}
+	data-dragging={dragging ? '' : undefined}
 	{...rest}
 	style={hostStyle}
 	data-ramka-zoom=""
-	data-zoom={zoom > 1 ? '' : undefined}
-	data-dragging={dragging ? '' : undefined}
 >
 	<div bind:this={wrapper} style={wrapperStyle}>
 		{@render children?.(zoomContext)}

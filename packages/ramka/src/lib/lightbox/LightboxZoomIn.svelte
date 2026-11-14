@@ -26,14 +26,14 @@
 	bind:this={ref}
 	{@attach accessibleNameWarning('Lightbox.ZoomIn')}
 	type="button"
-	{...rest}
 	{disabled}
-	data-ramka-zoom-in=""
 	data-disabled={disabled ? '' : undefined}
+	{...rest}
+	data-ramka-zoom-in=""
 	onclick={(event) => {
 		onclick?.(event);
 		// A Slides swipe is in flight: don't let the click hijack it.
-		if (event.defaultPrevented || lightbox.navigationLocked) return;
+		if (event.currentTarget.disabled || lightbox.navigationLocked) return;
 		zoom?.zoomIn();
 	}}
 >

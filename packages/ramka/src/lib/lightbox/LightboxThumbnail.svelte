@@ -49,13 +49,12 @@
 	aria-selected={active}
 	aria-controls="{lightbox.baseId}-panel-{index}"
 	tabindex={active ? 0 : -1}
-	{...rest}
-	data-ramka-thumbnail=""
 	data-active={active ? '' : undefined}
 	data-index={index}
+	{...rest}
+	data-ramka-thumbnail=""
 	onclick={(event) => {
 		onclick?.(event);
-		if (event.defaultPrevented) return;
 		if (strip) strip.selectIndex(index);
 		else lightbox.setActiveIndex(index, 'thumbnail');
 	}}

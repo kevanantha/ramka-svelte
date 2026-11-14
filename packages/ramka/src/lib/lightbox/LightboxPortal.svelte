@@ -62,6 +62,12 @@
 		);
 	});
 
+	// Spread, not `dir={…}`: for a named `dir` attribute Svelte's compiler also
+	// emits `node.dir = node.dir` (a Chromium repaint workaround), which writes
+	// `dir=""` when the prop is absent. ramka leaves the attribute off so an
+	// RTL page's own direction still reaches the viewer.
+	const hostDir = $derived({ dir: lightbox.dirAttribute });
+
 	/**
 	 * Children render only once the host sits in its target. Moving a node
 	 * resets the scroll position of everything inside it, so moving after
@@ -109,7 +115,7 @@
 	<div
 		bind:this={ref}
 		{@attach portal}
-		dir={lightbox.dirAttribute}
+		{...hostDir}
 		{...rest}
 		style={hostStyle}
 		data-ramka-portal=""

@@ -326,18 +326,19 @@
 		id="{lightbox.baseId}-content"
 		aria-modal={parked ? undefined : 'true'}
 		aria-hidden={parked ? 'true' : undefined}
-		inert={parked}
+		inert={parked || undefined}
 		tabindex={parked ? undefined : -1}
+		data-open={lightbox.open ? '' : undefined}
+		data-closed={lightbox.open ? undefined : ''}
 		{...rest}
-		style="overflow: hidden; overscroll-behavior: contain; user-select: none; -webkit-user-select: none;{style ??
-			''};{lightbox.preparing || parked ? 'visibility: hidden;' : ''}{parked
+		style="overflow: hidden; overscroll-behavior: contain; user-select: none; -webkit-user-select: none;{style
+			? `${style};`
+			: ''}{lightbox.preparing || parked ? 'visibility: hidden;' : ''}{parked
 			? 'pointer-events: none;'
 			: ''}"
 		data-ramka-content=""
 		{@attach live && pullToClose ? pullAttachment : null}
 		{@attach live ? containTouchScroll : null}
-		data-open={lightbox.open ? '' : undefined}
-		data-closed={lightbox.open ? undefined : ''}
 		onkeydown={(event) => {
 			onkeydown?.(event);
 			handleKeyDown(event);

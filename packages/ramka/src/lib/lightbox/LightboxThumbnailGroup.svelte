@@ -70,12 +70,12 @@
 <div
 	bind:this={ref}
 	role="tablist"
+	data-focus-within={focusWithin ? '' : undefined}
 	{...rest}
 	data-ramka-thumbnail-group=""
-	data-focus-within={focusWithin ? '' : undefined}
 	onkeydown={(event) => {
 		onkeydown?.(event);
-		if (!event.defaultPrevented) handleKeyDown(event);
+		handleKeyDown(event);
 	}}
 	onfocusin={(event) => {
 		onfocusin?.(event);

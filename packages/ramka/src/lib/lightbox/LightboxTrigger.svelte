@@ -292,7 +292,6 @@
 	{...rest}
 	onclick={(event) => {
 		onclick?.(event);
-		if (event.defaultPrevented) return;
 		if (lightbox) lightbox.openFromTrigger(index, element, imageNode);
 		// Detached: open through the shared handle (associates this element).
 		else handle?.open(index, { triggerId: handleTriggerId });

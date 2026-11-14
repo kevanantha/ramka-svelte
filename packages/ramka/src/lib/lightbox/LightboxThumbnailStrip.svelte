@@ -578,11 +578,11 @@
 
 <div
 	bind:this={ref}
+	data-scrubbing={scrubbing ? '' : undefined}
+	data-positioned={positioned ? '' : undefined}
 	{...rest}
 	style="position: relative; overflow: clip;{style ?? ''}"
 	data-ramka-thumbnail-strip=""
-	data-scrubbing={scrubbing ? '' : undefined}
-	data-positioned={positioned ? '' : undefined}
 >
 	{@render children?.({ scrubbing, positioned })}
 </div>

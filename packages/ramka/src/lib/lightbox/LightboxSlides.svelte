@@ -423,13 +423,13 @@
 	bind:this={ref}
 	role="group"
 	data-orientation="horizontal"
+	data-ssr-shift={ssrShift ? '' : undefined}
+	data-active-index={lightbox.activeIndex}
+	data-direction={lightbox.direction}
 	{...rest}
 	style="display: flex; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: {SLIDES_SCROLL_SNAP_TYPE}; scroll-behavior: auto; scrollbar-width: none; overflow-anchor: none;{style ??
 		''};position: relative; container-type: size;{ssrShiftStyle}"
 	data-ramka-slides=""
-	data-ssr-shift={ssrShift ? '' : undefined}
-	data-active-index={lightbox.activeIndex}
-	data-direction={lightbox.direction}
 >
 	{@render children?.()}
 </div>

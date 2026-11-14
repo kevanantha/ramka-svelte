@@ -313,7 +313,10 @@ export class LightboxState {
 			const activeIndex = this.activeIndex;
 			const before = prev;
 			prev = { open, activeIndex };
-			if (!resolveScrollTriggerOption(this.#props.scrollTriggerIntoView, 'onChange')) return;
+			// Untracked, like ramka's ref: a consumer passing a fresh inline config
+			// on every render must not rerun this and cancel the pending scroll.
+			const config = untrack(() => this.#props.scrollTriggerIntoView);
+			if (!resolveScrollTriggerOption(config, 'onChange')) return;
 			if (!open || !before.open || before.activeIndex === activeIndex) return;
 			window.clearTimeout(timer);
 			timer = window.setTimeout(() => {
@@ -733,7 +736,7 @@ export class LightboxState {
 	 */
 	#applySelectionGuard() {
 		if (this.#selectionGuardCleanup || !this.#scrollLockCleanup) return;
-		if (typeof navigator === 'undefined' || navigator.maxTouchPoints <= 0) return;
+		if (typeof navigator === 'undefined' || !(navigator.maxTouchPoints > 0)) return;
 		const html = document.documentElement;
 		const originalUserSelect = html.style.userSelect;
 		const originalWebkit = html.style.getPropertyValue('-webkit-user-select');
