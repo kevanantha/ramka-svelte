@@ -1,0 +1,5 @@
+// @docs-excerpt-title CSP header
+Content-Security-Policy:
+  default-src 'self';
+  style-src-elem 'self' 'nonce-<generated-per-request>';
+  style-src-attr 'unsafe-inline';

@@ -26,7 +26,9 @@ Work in progress. Ported so far:
 - **Unit tests.** ramka's vitest suite, ported to `@testing-library/svelte` on jsdom (`pnpm test`): 794 cases, all passing. Titles and assertions are the original's; files the original runs under node render with `svelte/server`. The React-only `react-compat` / `render/*` suites map onto `bind:ref`, attachments, rest props and snippets in `render-mechanisms.test.ts`.
 - **Debug pages.** Dev-only, as on ramka.dev: production answers 404 and the static build writes no HTML for them. `/debug/double-click-open`, `/debug/heavy-feed`, `/debug/media-stretch`, `/debug/minimal-composition`, `/debug/moodboard-snug` (three.js models), `/debug/morph-easter-eggs`, `/debug/real-estate-listing` and `/debug/vt-motion`. The `/api/slow-image` delay endpoint is Vite middleware, so it answers in `vite dev` and `vite preview` and returns 404 on a static host.
 
-Not ported yet: the other docs pages and presets.
+- **Docs site and guides.** The docs shell (sidebar, mobile nav drawer, pager, Shiki code blocks with copy, live demo + code frames, API tables) and every guide under `/docs`: installation, the lightbox overview, state & lifecycle, composition, SvelteKit images (the original's Next.js Image guide, rebuilt on `@sveltejs/enhanced-img`), view transitions, gestures, zoom & a11y, RTL, CSP and the API reference. Code samples are type-checked Svelte files; the API reference is generated from the components' props (`pnpm --filter docs docs:api`).
+
+Not ported yet: `/presets/default`, the blog and license pages, and the end-to-end tests.
 
 ## Usage
 

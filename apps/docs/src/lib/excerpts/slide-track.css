@@ -1,0 +1,18 @@
+/*
+ * Docs excerpt source only, never imported. The live rule
+ * (styles/chrome-insets.css) is scoped to `.lightbox-demo-slides` so it can't
+ * leak into other skins; this is the generic, copy-paste form shown on the
+ * composition page.
+ */
+
+/* @docs-excerpt-start slide-track-css */
+/* @docs-excerpt-title Slide track (full-bleed carousel) */
+/*
+ * Default bleed track — one scrollport width per slide.
+ * Slides geometry assumes center snap (built into Lightbox.Slide).
+ */
+[data-ramka-slide] {
+	flex: 0 0 100%;
+	min-width: 100%;
+}
+/* @docs-excerpt-end */
