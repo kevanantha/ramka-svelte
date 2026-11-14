@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Orb setup: runs once per fresh orb (and again on a stale snapshot), so every
+# step must be idempotent and cheap when its work is already done.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+step() {
+  local name="$1"
+  shift
+  local start=$SECONDS
+  echo "==> $name"
+  "$@"
+  echo "<== $name ($((SECONDS - start))s)"
+}
+
+# package.json pins pnpm via `packageManager`; .npmrc sets engine-strict.
+ensure_pnpm() {
+  local want
+  want="$(node -p 'require("./package.json").packageManager.split("@")[1]')"
+  if [[ "$(pnpm --version 2>/dev/null || true)" != "$want" ]]; then
+    npm install --global "pnpm@$want"
+  fi
+  pnpm --version
+}
+
+install_deps() {
+  CI=true pnpm install --frozen-lockfile
+}
+
+# The e2e suite runs Chromium, WebKit and Firefox (playwright.config.ts).
+# `playwright install` skips browsers already present; `--with-deps` would run
+# apt-get update every time, so system deps are installed only when a browser
+# is downloaded or a library check fails.
+install_browsers() {
+  local cache="$HOME/.cache/ms-playwright"
+  local before after
+  before="$(ls "$cache" 2>/dev/null || true)"
+  pnpm exec playwright install chromium webkit firefox
+  after="$(ls "$cache" 2>/dev/null || true)"
+  if [[ "$before" != "$after" || ! -f "$cache/.ramka-deps-installed" ]]; then
+    sudo env PATH="$PATH" DEBIAN_FRONTEND=noninteractive "$(pnpm bin)/playwright" install-deps chromium webkit firefox
+    touch "$cache/.ramka-deps-installed"
+  fi
+}
+
+step "pnpm" ensure_pnpm
+step "pnpm install" install_deps
+step "playwright browsers" install_browsers
