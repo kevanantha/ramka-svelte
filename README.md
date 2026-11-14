@@ -23,7 +23,9 @@ Work in progress. Ported so far:
 - **Thumbnail strip.** `ThumbnailStrip` + `ThumbnailStripTrack`: the active thumbnail stays centered under the strip's midline, linked to `Slides` by a native `ScrollTimeline` (a measured JS scroll mirror for variable-width slides, while zoomed, or where `ScrollTimeline` is missing). Thumbnail clicks, tablist arrows, `Content` keys and `Previous` / `Next` scrub the track (`scrubOnSelect`); thumbnail clicks also crossfade the stage with an element-scoped view transition on `Slides` (`selectViewTransition`, tuned by `--lightbox-select-vt-duration` / `--lightbox-select-vt-easing`), and `wrapSelectCommit` wraps the index commit. The strip publishes `data-scrubbing`, `data-positioned` and `--lightbox-thumbnail-strip-travel`.
 - **Docs examples.** `/examples/lightbox/text-message` (one Trigger over an attachment stack, `morphTo="origin"`), `/examples/lightbox/film-trailers` (posters morphing into autoplaying videos) and `/examples/lightbox/3d-models` (three.js canvases in trigger and slide, `onBeforeOpen` waiting for the slide's first frame).
 
-Not ported yet: the other docs pages and presets, and tests.
+- **Unit tests.** ramka's vitest suite, ported to `@testing-library/svelte` on jsdom (`pnpm test`): 794 cases, all passing. Titles and assertions are the original's; files the original runs under node render with `svelte/server`. The React-only `react-compat` / `render/*` suites map onto `bind:ref`, attachments, rest props and snippets in `render-mechanisms.test.ts`.
+
+Not ported yet: the other docs pages and presets.
 
 ## Usage
 

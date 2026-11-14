@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderToString } from './ssr-test-utils';
 
+import StripSSR from './fixtures/misc/StripSSR.svelte';
 import TriggerSSR from './fixtures/misc/TriggerSSR.svelte';
 
 /** Attribute region (up to `>`) of the button tagged with the given testid. */
@@ -65,6 +66,14 @@ describe('LightboxTrigger server rendering (SSR-open pages)', () => {
 });
 
 describe('LightboxThumbnailStrip server rendering (SSR-open pages)', () => {
-	// Pending ThumbnailStrip port
-	it.skip('never serializes data-positioned — the server cannot position the track', () => {});
+	it('never serializes data-positioned — the server cannot position the track', () => {
+		// `data-positioned` is the consumer's cue that the track has genuinely
+		// been measured and placed against the Slides scroller, which requires
+		// client layout. If it ever leaked into server HTML, CSS hiding the strip
+		// until positioning would stop working and the pre-hydration strip would
+		// paint at offset 0. Pin the absence.
+		const html = renderToString(StripSSR);
+		expect(html).toContain('data-ramka-thumbnail-strip');
+		expect(html).not.toContain('data-positioned');
+	});
 });

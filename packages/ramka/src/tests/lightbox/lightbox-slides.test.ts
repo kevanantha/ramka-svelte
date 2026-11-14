@@ -11,6 +11,7 @@ import SlidesLightbox from './fixtures/slides/SlidesLightbox.svelte';
 import SsrShiftGallery from './fixtures/slides/SsrShiftGallery.svelte';
 import {
 	SLIDE_TEST_WIDTH as WIDTH,
+	applySlideGeometry,
 	endScroll,
 	flushRaf,
 	installSlidesLayoutMocks,
@@ -128,11 +129,89 @@ describe('Lightbox.Slides', () => {
 		expect(hoisted.some((css) => css.includes('scroll-initial-target:nearest'))).toBe(true);
 	});
 
-	// Pending ThumbnailStrip port: the case renders a LightboxThumbnailStrip and
-	// asserts its `data-positioned` handoff. (It also needs a server render
-	// hydrated in jsdom; the client project compiles components for the browser
-	// only, so a Svelte port would hydrate HTML from the server project.)
-	it.skip('hydration handoff: holds the jump while the ssrSlideShift stand-in is on, then retires and jumps in one commit', () => {});
+	it('hydration handoff: holds the jump while the ssrSlideShift stand-in is on, then retires and jumps in one commit', async () => {
+		// The real scroll offset is written only AFTER the stand-in retires — never
+		// under it. WebKit includes transformed boxes in the scrollable-overflow
+		// area, so while slides are translated inline-start `scrollWidth` shrinks
+		// by the shift and the real offset is unreachable: a hydration-commit jump
+		// gets clamped slides short, and Safari painted the wrong slide (and a
+		// wrongly-positioned thumbnail strip) until a later correction.
+		//
+		// The ThumbnailStrip rides the same handoff: `data-positioned` must be
+		// absent in server HTML and present, with the real offset in place, after
+		// hydration. The SSR stamps (`data-ssr-active` on the active Item,
+		// `data-morph-target` on the active Trigger) ride it too: hydration must
+		// not report a mismatch, the flip removes `data-ssr-active`, and the
+		// active trigger keeps `data-morph-target`.
+		//
+		// Svelte: the server HTML comes from a server-compiled copy of the fixture
+		// (`renderOnServer`), hydrated with `hydrate` from 'svelte'. Svelte reports
+		// hydration mismatches through console.warn in development (React 19 uses
+		// console.error), so both are watched.
+		const { hydrate, unmount, flushSync } = await import('svelte');
+		const { renderOnServer } = await import('./ssr-in-jsdom');
+		const { head, body } = await renderOnServer(
+			'/src/tests/lightbox/fixtures/slides/HydrationHandoff.svelte'
+		);
+		const { default: HydrationHandoff } = await import('./fixtures/slides/HydrationHandoff.svelte');
+
+		const headStart = document.head.childNodes.length;
+		document.head.insertAdjacentHTML('beforeend', head);
+		const container = document.createElement('div');
+		document.body.appendChild(container);
+		container.innerHTML = body;
+		const viewport = container.querySelector<HTMLElement>('[data-ramka-slides]')!;
+		const strip = container.querySelector<HTMLElement>('[data-ramka-thumbnail-strip]')!;
+		const activeTrigger = container.querySelector<HTMLElement>('[data-testid="trigger-2"]')!;
+		expect(viewport).toHaveAttribute('data-ssr-shift');
+		// Server HTML carries the SSR stamps for the active index.
+		expect(container.querySelector('[data-index="2"][data-ramka-item]')).toHaveAttribute(
+			'data-ssr-active'
+		);
+		expect(activeTrigger).toHaveAttribute('data-morph-target');
+		// Scroll/transform positions cannot be serialized: server HTML must never
+		// claim the strip is positioned.
+		expect(strip).not.toHaveAttribute('data-positioned');
+		// Server HTML sits at offset 0; geometry must exist on the server DOM
+		// before hydration effects measure it.
+		applySlideGeometry(viewport, 4);
+		expect(viewport.scrollLeft).toBe(0);
+
+		const consoleErrorSpy = vi.spyOn(console, 'error');
+		const consoleWarnSpy = vi.spyOn(console, 'warn');
+		let app: Record<string, unknown> | undefined;
+		try {
+			act(() => {
+				app = hydrate(HydrationHandoff, { target: container });
+				flushSync();
+			});
+			await act(async () => undefined);
+
+			const hydrationComplaints = [
+				...consoleErrorSpy.mock.calls,
+				...consoleWarnSpy.mock.calls
+			].filter((call) => call.some((arg) => typeof arg === 'string' && /hydrat/i.test(arg)));
+			expect(hydrationComplaints).toEqual([]);
+
+			// One retire commit: stand-in gone AND the real offset in place.
+			expect(viewport).not.toHaveAttribute('data-ssr-shift');
+			expect(viewport.style.getPropertyValue('--lightbox-ssr-index')).toBe('');
+			expect(viewport.scrollLeft).toBe(2 * WIDTH);
+			// The strip was re-entered after the handoff and marked positioned.
+			expect(strip).toHaveAttribute('data-positioned');
+			// The flip un-renders `data-ssr-active`…
+			expect(container.querySelector('[data-ssr-active]')).toBeNull();
+			// …but the active trigger must STAY hidden.
+			expect(activeTrigger).toHaveAttribute('data-morph-target');
+		} finally {
+			consoleErrorSpy.mockRestore();
+			consoleWarnSpy.mockRestore();
+			// Manual root — testing-library cleanup doesn't know about it.
+			if (app) act(() => unmount(app!));
+			container.remove();
+			while (document.head.childNodes.length > headStart) document.head.lastChild!.remove();
+		}
+	});
 
 	it('keeps the active index on viewport resize when scrollLeft is temporarily stale', () => {
 		render(SlidesLightbox, { defaultValue: 3 });

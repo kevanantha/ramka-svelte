@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { LIGHTBOX_PART_IDENTITY_ATTRIBUTES } from '../../lib/lightbox/lightbox-data-attributes';
+import FullChromeLightbox from './fixtures/misc/FullChromeLightbox.svelte';
+import { render } from './test-utils';
 
 describe('Lightbox part identity markers', () => {
 	it('lists only data-ramka-* identity attributes', () => {
@@ -9,7 +11,13 @@ describe('Lightbox part identity markers', () => {
 		}
 	});
 
-	// Pending ThumbnailStrip port: the full-chrome tree mounts
-	// Lightbox.ThumbnailStrip / ThumbnailStripTrack.
-	it.skip('publishes every listed identity marker on a mounted tree', () => {});
+	it('publishes every listed identity marker on a mounted tree', () => {
+		render(FullChromeLightbox);
+
+		const missing = LIGHTBOX_PART_IDENTITY_ATTRIBUTES.filter(
+			(attr) => document.querySelector(`[${attr}]`) === null
+		);
+
+		expect(missing).toEqual([]);
+	});
 });
