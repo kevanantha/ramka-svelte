@@ -1,3 +1,5 @@
 node_modules
 .DS_Store
 .amp/in/artifacts
+test-results
+playwright-report

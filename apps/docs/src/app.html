@@ -18,6 +18,11 @@
 					root.style.colorScheme = dark ? 'dark' : 'light';
 				} catch (e) {}
 			})();
+			// ramka's composited transform-only morph (vt-composited-morph.ts) is
+			// the shipped morph; append ?vtstock to force the stock UA morph, for
+			// debugging a suspected regression in the composited path. Inline so
+			// the flag is set before any interaction can start a transition.
+			if (/[?&]vtstock/.test(location.search)) window.__RAMKA_VT_COMPOSITED__ = false;
 		</script>
 		%sveltekit.head%
 	</head>

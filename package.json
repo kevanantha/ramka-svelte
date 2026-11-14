@@ -11,10 +11,17 @@
     "check": "pnpm -r check",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
-    "format": "pnpm -r format"
+    "format": "pnpm -r format",
+    "test:e2e": "playwright test",
+    "typecheck:e2e": "tsc -p tsconfig.e2e.json"
   },
   "packageManager": "pnpm@10.20.0",
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^26.6.6",
+    "typescript": "^6.0.3"
   }
 }

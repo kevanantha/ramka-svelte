@@ -28,8 +28,7 @@ Work in progress. Ported so far:
 - **Unit tests.** ramka's vitest suite, ported to `@testing-library/svelte` on jsdom (`pnpm test`): 796 cases, all passing. Titles and assertions are the original's; files the original runs under node render with `svelte/server`. The React-only `react-compat` / `render/*` suites map onto `bind:ref`, attachments, rest props and snippets in `render-mechanisms.test.ts`.
 - **Debug pages.** Dev-only, as on ramka.dev: production answers 404 and the static build writes no HTML for them. `/debug/double-click-open`, `/debug/dynamic-items` (slides added and removed while the viewer is open), `/debug/heavy-feed`, `/debug/lightbox-overlays` (tooltip, menu and nested dialogs stacked on the viewer), `/debug/media-stretch`, `/debug/minimal-composition`, `/debug/moodboard-snug` (three.js models), `/debug/morph-easter-eggs`, `/debug/real-estate-listing` and `/debug/vt-motion`. The `/api/slow-image` delay endpoint is Vite middleware, so it answers in `vite dev` and `vite preview` and returns 404 on a static host.
 - **Docs site and guides.** The docs shell (sidebar, mobile nav drawer, pager, Shiki code blocks with copy, live demo + code frames, API tables) and every guide under `/docs`: installation, the lightbox overview, state & lifecycle, composition, SvelteKit images (the original's Next.js Image guide, rebuilt on `@sveltejs/enhanced-img`), view transitions, gestures, zoom & a11y, RTL, CSP and the API reference. Code samples are type-checked Svelte files; the API reference is generated from the components' props (`pnpm --filter docs docs:api`).
-
-Not ported yet: the end-to-end tests.
+- **End-to-end tests.** ramka's Playwright suite (`e2e/`, `pnpm test:e2e`): morph, zoom, carousel, RTL, the low-end fallback and the mobile morph, touch swipe and pull to dismiss, on the original's five projects (desktop Chromium, WebKit and Firefox, plus emulated Pixel 7 and iPhone 15), with no retries, against the production build served by `vite preview`. Titles and assertions are the original's; [`e2e/README.md`](./e2e/README.md) lists where it differs from the original suite.
 
 ## Usage
 
@@ -84,8 +83,10 @@ This is a pnpm workspace:
 
 ```bash
 pnpm install
-pnpm build   # package the library, then build the docs site
-pnpm check   # svelte-check both workspaces
+pnpm build      # package the library, then build the docs site
+pnpm check      # svelte-check both workspaces
+pnpm test       # unit tests (vitest + jsdom)
+pnpm test:e2e   # browser tests against the build above (first run: pnpm exec playwright install --with-deps)
 ```
 
 `.amp/services.yaml` runs the docs dev server. The docs import the library from `packages/ramka/src/lib` (a SvelteKit alias), so library edits hot-reload without packaging.
