@@ -27,6 +27,7 @@
 			{tease ?? RAMKA}
 		</p>
 		<nav class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+			<a href="/license" class={link}>License</a>
 			<a href={ORIGINAL_URL} target="_blank" rel="noreferrer" class={link}>Original (React)</a>
 			<a href={GITHUB_URL} target="_blank" rel="noreferrer" class={link}>GitHub</a>
 		</nav>

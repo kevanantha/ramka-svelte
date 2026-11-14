@@ -13,6 +13,12 @@
 	import * as P from '#lib/photos.js';
 	import type { GalleryItem } from '#lib/photos.js';
 
+	/**
+	 * `eager` loads every tile up front: right for the landing hero where the
+	 * grid IS the LCP, wrong for pages that embed the demo below the fold.
+	 */
+	let { eager = true }: { eager?: boolean } = $props();
+
 	type Tile = GalleryItem & { tileClass: string; breakClass: string };
 
 	const visible: Tile[] = [
@@ -74,6 +80,7 @@
 							{@attach image}
 							src={img.thumb}
 							alt={img.alt}
+							loading={eager ? 'eager' : 'lazy'}
 							draggable="false"
 							class="col-start-1 row-start-1 block h-full w-full object-cover select-none {img.tileClass}"
 						/>

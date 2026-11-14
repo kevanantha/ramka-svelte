@@ -12,6 +12,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@utility scrollbar-thin {
+	scrollbar-width: thin;
+}
+
 @theme inline {
 	--font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
 	--color-background: var(--background);
