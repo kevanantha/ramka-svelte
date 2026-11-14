@@ -169,6 +169,8 @@ export class LightboxState {
 	 * close hold. Content/Backdrop render `visibility: hidden` meanwhile.
 	 */
 	preparing = $state(false);
+	/** Items created so far, outside reactivity (see registerItem). */
+	#countedItems = 0;
 	#registeredItems = $state(0);
 	#tablists = $state(0);
 	/** Caption registry, keyed by item index. */
@@ -341,9 +343,26 @@ export class LightboxState {
 	// Registration runs inside the parts' effects. `untrack` keeps those
 	// effects from depending on the counters they write (an update loop).
 
+	/**
+	 * Counts an Item while it is created; returns its unregistration. The
+	 * reactive total is published by {@link publishItemCount} from the Items'
+	 * effects, so every Item created in one flush is counted before the first
+	 * publish and `itemCount` jumps straight to the new total, the way React's
+	 * batched registration does in the original. Publishing per registration
+	 * made each Item's loop-wrapped preload distance run against a partial
+	 * count: opening a looping gallery mounted every Item for a moment, and
+	 * fetched every full-size image with it.
+	 */
 	registerItem(): () => void {
-		untrack(() => (this.#registeredItems += 1));
-		return () => untrack(() => (this.#registeredItems -= 1));
+		this.#countedItems += 1;
+		return () => {
+			this.#countedItems -= 1;
+			this.publishItemCount();
+		};
+	}
+
+	publishItemCount(): void {
+		untrack(() => (this.#registeredItems = this.#countedItems));
 	}
 
 	registerTablist(): () => void {

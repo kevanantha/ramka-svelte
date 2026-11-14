@@ -52,7 +52,7 @@
 </script>
 
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { BROWSER, DEV } from 'esm-env';
 	import { getLightboxContext } from './lightbox-state.svelte';
 	import { getSlidesPreload } from './LightboxSlides.svelte';
@@ -134,7 +134,9 @@
 		if (active && ref) lightbox.activeItemElement = ref;
 	});
 
-	$effect(() => lightbox.registerItem());
+	// Counted now, published once the flush's effects run (see registerItem).
+	onDestroy(lightbox.registerItem());
+	$effect(() => lightbox.publishItemCount());
 
 	$effect(() => {
 		if (caption !== undefined) return lightbox.registerCaption(index, caption);

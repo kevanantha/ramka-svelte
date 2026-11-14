@@ -891,6 +891,40 @@ describe('Lightbox', () => {
 			expect(screen.getByTestId('item-5')).toBeInTheDocument();
 			expect(screen.queryByTestId('item-3')).toBeNull();
 		});
+
+		// Not in the original suite: React registers items in one batched
+		// render, so it never sees a partial count. Svelte effects publish
+		// registrations one by one, and a wrapped distance against a partial
+		// count put every item briefly inside the window (with real slides,
+		// every full-size image was fetched on open).
+		async function itemsEverMounted(act: () => unknown): Promise<number[]> {
+			const indices = new Set<number>();
+			const collect = (records: MutationRecord[]) => {
+				for (const record of records) {
+					for (const node of record.addedNodes) {
+						if (!(node instanceof HTMLElement)) continue;
+						const items = node.matches('[data-ramka-item]')
+							? [node]
+							: [...node.querySelectorAll<HTMLElement>('[data-ramka-item]')];
+						for (const item of items) indices.add(Number(item.dataset.index));
+					}
+				}
+			};
+			const observer = new MutationObserver(collect);
+			observer.observe(document.body, { childList: true, subtree: true });
+			await act();
+			collect(observer.takeRecords());
+			observer.disconnect();
+			return [...indices].sort((a, b) => a - b);
+		}
+
+		it('never mounts items outside the window while a looping gallery opens', async () => {
+			render(TestLightbox, { itemCount: 12, preload: 1, loop: true });
+			const mounted = await itemsEverMounted(() =>
+				fireEvent.click(screen.getByTestId('trigger-0'))
+			);
+			expect(mounted).toEqual([0, 1, 11]);
+		});
 	});
 
 	// ---------------------------------------------------------------------------
