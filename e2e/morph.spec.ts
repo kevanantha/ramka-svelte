@@ -127,6 +127,40 @@ test.describe('open and close morph', () => {
     await expect(trigger).toBeFocused();
   });
 
+  test('fades the page behind with a normal blend, opening and closing', async ({ page }) => {
+    // The old root snapshot is held opaque (#2), so the new one must fade in
+    // over it with a normal blend. The UA's plus-lighter blend *adds* the new
+    // snapshot instead: the page stays lit through the open, and on a light
+    // theme it whites out through the close (#3). Sampled on every frame,
+    // because the blend only exists while the transition runs.
+    await page.evaluate(() => {
+      const samples: string[] = [];
+      (window as unknown as { __rootBlend: string[] }).__rootBlend = samples;
+      const html = document.documentElement;
+      const tick = () => {
+        if (html.hasAttribute('data-ramka-view-transition')) {
+          const fresh = getComputedStyle(html, '::view-transition-new(root)');
+          const stale = getComputedStyle(html, '::view-transition-old(root)');
+          samples.push(`${fresh.mixBlendMode} ${stale.mixBlendMode} ${stale.opacity}`);
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+
+    await openLightbox(page);
+    await page.keyboard.press('Escape');
+    await page.locator('[data-ramka-content]').waitFor({ state: 'detached' });
+    await morphSettled(page);
+
+    const samples = await page.evaluate(
+      () => (window as unknown as { __rootBlend: string[] }).__rootBlend,
+    );
+    // Both morphs ran for several frames; an empty list would pass vacuously.
+    expect(samples.length).toBeGreaterThan(4);
+    expect([...new Set(samples)]).toEqual(['normal normal 1']);
+  });
+
   test('skips the morph under prefers-reduced-motion but still opens', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.reload();

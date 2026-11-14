@@ -136,7 +136,10 @@ ${presetTimingRules}
      cross-fade, but when Chromium skips drawing the new snapshot for a frame
      (seen on throttled opens), the old page shows instead of a
      half-transparent one over the canvas colour: a light page body flashed
-     through a dark page for one frame. */
+     through a dark page for one frame.
+     The new snapshot's blend needs !important: the UA applies plus-lighter
+     through an animation, which outranks a normal declaration and would add
+     the new snapshot onto the opaque old one (#3). */
   :root[${vt}]::view-transition-old(root) {
     animation-name: none;
     opacity: 1;
@@ -144,7 +147,7 @@ ${presetTimingRules}
   }
 
   :root[${vt}]::view-transition-new(root) {
-    mix-blend-mode: normal;
+    mix-blend-mode: normal !important;
   }
 
   /* Shape morph is CSS-only: JS writes the from/to radius vars; the group
