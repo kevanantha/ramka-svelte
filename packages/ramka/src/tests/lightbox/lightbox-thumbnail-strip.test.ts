@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import type { TextDirection } from '../../lib/lightbox/lightbox-direction';
+import KeyedStripGallery from './fixtures/thumbnail-strip/KeyedStripGallery.svelte';
 import StripGallery from './fixtures/thumbnail-strip/StripGallery.svelte';
 import { act, fireEvent, render, screen } from './test-utils';
 
@@ -303,6 +304,31 @@ describe('Lightbox.ThumbnailStrip', () => {
 
 		expect(track.style.paddingInlineStart).toBe('120px'); // (320 - 80) / 2
 		expect(track.style.paddingInlineEnd).toBe('120px');
+	});
+
+	// Port-only: a moved thumb's cleanup runs after the thumb now at its old
+	// index registered, and must not unregister it (/debug/dynamic-items).
+	it('measures every thumb after items shift while open', async () => {
+		const { rerender } = render(KeyedStripGallery, { ids: ['a', 'b', 'c'] });
+		const root = screen.getByTestId('thumbnail-strip');
+		const track = screen.getByTestId('thumbnail-strip-track');
+		const slides = screen.getByTestId('slides');
+		setupThumbnailStripRoot(root);
+		const endTravel = () => track.style.getPropertyValue('--lightbox-thumbnail-strip-travel');
+
+		await rerender({ ids: ['z', 'a', 'b', 'c'] });
+		setupSlidesGeometry(slides, 4);
+		setupThumbGeometry(track, 4);
+		expect(endTravel()).toBe(`${-3 * THUMB_STEP}px`);
+		swipeTo(slides, 1);
+		expect(readTranslateX(track)).toBeCloseTo(-THUMB_STEP, 5);
+
+		await rerender({ ids: ['a', 'b', 'c'] });
+		setupSlidesGeometry(slides, 3);
+		setupThumbGeometry(track, 3);
+		expect(endTravel()).toBe(`${-2 * THUMB_STEP}px`);
+		swipeTo(slides, 2);
+		expect(readTranslateX(track)).toBeCloseTo(-2 * THUMB_STEP, 5);
 	});
 
 	it('links the track to Slides via ScrollTimeline when available', () => {

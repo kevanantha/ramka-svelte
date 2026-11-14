@@ -18,8 +18,13 @@ export interface LightboxThumbnailStripSelectOptions {
 export interface LightboxThumbnailStripContextValue {
 	/** Register the transform target (tablist track element). */
 	registerTrack: (node: HTMLElement | null) => void;
-	/** Register a thumbnail element for midline / travel measurement. */
-	registerThumb: (index: number, node: HTMLElement | null) => void;
+	/**
+	 * Register a thumbnail element for midline / travel measurement. Returns
+	 * the unregister, which clears the slot only while it still holds `node`:
+	 * when items shift, a moved thumb's cleanup can run after the thumb now at
+	 * its old index registered.
+	 */
+	registerThumb: (index: number, node: HTMLElement) => () => void;
 	/**
 	 * Discrete selection into this ThumbnailStrip (pointer thumb, keyboard,
 	 * Previous/Next). Owns optional scrub motion; always respects

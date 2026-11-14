@@ -33,10 +33,10 @@
 		const i = index;
 		if (!node) return;
 		group?.set(i, node);
-		strip?.registerThumb(i, node);
+		const unregisterThumb = strip?.registerThumb(i, node);
 		return () => {
 			if (group?.get(i) === node) group.delete(i);
-			strip?.registerThumb(i, null);
+			unregisterThumb?.();
 		};
 	});
 </script>

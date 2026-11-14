@@ -136,22 +136,27 @@
 		track = node;
 	}
 
-	function registerThumb(index: number, node: HTMLElement | null) {
-		const prev = thumbs.get(index);
-		if (node) {
-			if (prev === node) return;
-			thumbs.set(index, node);
-		} else if (prev) {
-			thumbs.delete(index);
-		} else {
-			return;
-		}
-		// Coalesce mount/unmount storms into one remeasure.
+	/** Coalesce mount/unmount storms into one remeasure. */
+	function bumpThumbs() {
 		if (thumbBumpRaf !== 0) return;
 		thumbBumpRaf = requestAnimationFrame(() => {
 			thumbBumpRaf = 0;
 			thumbVersion += 1;
 		});
+	}
+
+	function registerThumb(index: number, node: HTMLElement) {
+		if (thumbs.get(index) !== node) {
+			thumbs.set(index, node);
+			bumpThumbs();
+		}
+		return () => {
+			// Only clear our own slot: when items shift, the thumb now at this
+			// index may have registered before this cleanup ran.
+			if (thumbs.get(index) !== node) return;
+			thumbs.delete(index);
+			bumpThumbs();
+		};
 	}
 
 	/**
