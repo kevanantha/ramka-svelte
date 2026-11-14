@@ -459,7 +459,34 @@ export const generatedProps: Record<string, PropRow[]> = {
 			"description": "Whether the bound Root is currently open. Reactive."
 		}
 	],
-	"api-zoom-ref": [
+	"api-zoom-handle": [
+		{
+			"name": "getPose",
+			"type": "() => { zoom: number; offsetX: number; offsetY: number }",
+			"description": "Current zoom level and pan offsets."
+		},
+		{
+			"name": "zoomIn",
+			"type": "() => void",
+			"description": "Step zoom in by zoomStep."
+		},
+		{
+			"name": "zoomOut",
+			"type": "() => void",
+			"description": "Step zoom out by zoomStep."
+		},
+		{
+			"name": "zoomTo",
+			"type": "(target: number, options?: { rapid?: boolean; dx?: number; dy?: number }) => void",
+			"description": "Zoom to an absolute level, optionally recentering."
+		},
+		{
+			"name": "reset",
+			"type": "(rapid?: boolean) => void",
+			"description": "Reset zoom and pan to the resting state; `true` skips the animation."
+		}
+	],
+	"api-zoom-context": [
 		{
 			"name": "zoomIn",
 			"type": "() => void",
@@ -790,7 +817,8 @@ export const generatedAttributes: Record<string, AttrRow[]> = {
 	"api-get-item-context": [],
 	"api-get-zoom-context": [],
 	"api-create-handle": [],
-	"api-zoom-ref": []
+	"api-zoom-handle": [],
+	"api-zoom-context": []
 };
 
 export const generatedCssVariables: Record<string, CssVarRow[]> = {
@@ -906,5 +934,6 @@ export const generatedCssVariables: Record<string, CssVarRow[]> = {
 	"api-get-item-context": [],
 	"api-get-zoom-context": [],
 	"api-create-handle": [],
-	"api-zoom-ref": []
+	"api-zoom-handle": [],
+	"api-zoom-context": []
 };

@@ -14,6 +14,24 @@
 		readonly dragging: boolean;
 	}
 
+	/**
+	 * Imperative handle from `bind:this` on Zoom (ramka's `LightboxZoomRef`).
+	 * Unlike the context's committed state, `getPose()` is live, mid-gesture
+	 * and mid-animation.
+	 */
+	export interface LightboxZoomRef {
+		/** Current zoom level and pan offsets. */
+		getPose(): { zoom: number; offsetX: number; offsetY: number };
+		/** Step zoom in by zoomStep. */
+		zoomIn(): void;
+		/** Step zoom out by zoomStep. */
+		zoomOut(): void;
+		/** Zoom to an absolute level, optionally recentering. */
+		zoomTo(target: number, options?: { rapid?: boolean; dx?: number; dy?: number }): void;
+		/** Reset zoom and pan to the resting state; `true` skips the animation. */
+		reset(rapid?: boolean): void;
+	}
+
 	/** State plus actions, published to descendants (e.g. a ZoomIn inside a slide). */
 	export interface LightboxZoomContext extends LightboxZoomState {
 		zoomIn(): void;

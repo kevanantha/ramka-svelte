@@ -283,10 +283,20 @@ export const imperativeApiMeta: ApiPartMeta[] = [
 		}
 	},
 	{
-		id: 'api-zoom-ref',
+		id: 'api-zoom-handle',
+		name: 'LightboxZoomRef',
+		description: 'Imperative handle from bind:this on Zoom.',
+		extract: {
+			kind: 'interface-members',
+			typeName: 'LightboxZoomRef',
+			file: 'LightboxZoom.svelte'
+		}
+	},
+	{
+		id: 'api-zoom-context',
 		name: 'LightboxZoomContext',
 		description:
-			'Zoom actions from getLightboxZoomContext() inside a Zoom (the counterpart of the ref on Zoom in ramka for React). The state fields (zoom, maxZoom, canZoomIn, …) are also passed to Zoom’s children snippet.',
+			'Zoom state and actions from getLightboxZoomContext() inside a Zoom, for descendants such as in-slide controls. The state fields (zoom, maxZoom, canZoomIn, …) are also passed to Zoom’s children snippet.',
 		extract: {
 			kind: 'interface-members',
 			typeName: 'LightboxZoomContext',

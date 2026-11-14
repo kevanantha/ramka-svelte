@@ -36,7 +36,7 @@
 		media?: boolean;
 	} = $props();
 
-	let zoomInstance: ReturnType<typeof Lightbox.Zoom> | undefined = $state();
+	let zoomInstance: Lightbox.LightboxZoomRef | undefined = $state();
 </script>
 
 <Lightbox.Root open>

@@ -70,7 +70,8 @@ export type { LightboxThumbnailStripTrackProps } from './LightboxThumbnailStripT
 export type {
 	LightboxZoomProps,
 	LightboxZoomState,
-	LightboxZoomContext
+	LightboxZoomContext,
+	LightboxZoomRef
 } from './LightboxZoom.svelte';
 export type { LightboxZoomInProps } from './LightboxZoomIn.svelte';
 export type { LightboxZoomOutProps } from './LightboxZoomOut.svelte';
