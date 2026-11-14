@@ -131,6 +131,22 @@ ${presetTimingRules}
     animation-timing-function: ${rootEasing};
   }
 
+  /* Hold the old root snapshot opaque and fade only the new one over it.
+     Over an opaque snapshot that is the same blend as the UA's plus-lighter
+     cross-fade, but when Chromium skips drawing the new snapshot for a frame
+     (seen on throttled opens), the old page shows instead of a
+     half-transparent one over the canvas colour: a light page body flashed
+     through a dark page for one frame. */
+  :root[${vt}]::view-transition-old(root) {
+    animation-name: none;
+    opacity: 1;
+    mix-blend-mode: normal;
+  }
+
+  :root[${vt}]::view-transition-new(root) {
+    mix-blend-mode: normal;
+  }
+
   /* Shape morph is CSS-only: JS writes the from/to radius vars; the group
      owns clipping for the whole transition. The 'from' radius is the cascade
      base (not only a keyframe) so frame 0 can't flash the 0px fallback. */
