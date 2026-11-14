@@ -36,6 +36,7 @@
 		}
 	},
 	"scripts": {
+		"prepare": "svelte-kit sync || echo ''",
 		"package": "svelte-kit sync && svelte-package",
 		"dev": "svelte-kit sync && svelte-package --watch",
 		"prepack": "svelte-kit sync && svelte-package && publint",
