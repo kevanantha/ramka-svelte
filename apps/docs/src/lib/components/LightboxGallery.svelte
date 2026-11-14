@@ -12,6 +12,7 @@
 	import ZoomIn from '@lucide/svelte/icons/zoom-in';
 	import ZoomOut from '@lucide/svelte/icons/zoom-out';
 	import { flushSync, type Snippet } from 'svelte';
+	import type { LightboxPortalProps } from 'ramka-svelte/lightbox';
 	import {
 		chromeButton,
 		chromeButtonGroup,
@@ -20,6 +21,7 @@
 		chromeSegmentDivider
 	} from './chrome';
 	import type { GalleryItem } from '#lib/photos.js';
+	import { blurPlaceholderStyle, clearBlurPlaceholder } from '#lib/blur-placeholder.js';
 
 	type SlidesLayout = 'bleed' | 'snug';
 
@@ -33,7 +35,10 @@
 		slidesLayout = 'bleed',
 		layoutToggle = false,
 		thumbnails = 'desktop',
-		slide
+		slide,
+		portalProps,
+		ssrSlideShift = false,
+		captionFallback
 	}: {
 		items: GalleryItem[];
 		ariaLabel: string;
@@ -57,6 +62,23 @@
 		thumbnails?: 'desktop' | 'never';
 		/** Custom slide content (video, 3D, …) in place of Zoom + Media + img. */
 		slide?: Snippet<[item: GalleryItem, index: number]>;
+		/**
+		 * Forwarded to `Lightbox.Portal`, e.g. `{ container: null }` to render
+		 * in place so a prerendered page can ship the viewer already open.
+		 * Then also pass a stacking class (`relative z-50`) so the fixed viewer
+		 * clears the page's sticky chrome.
+		 */
+		portalProps?: Omit<LightboxPortalProps, 'children'>;
+		/**
+		 * Forwarded to `Lightbox.Slides` (bleed layout only: the shift needs
+		 * scrollport-wide slides) for pages that render the viewer open.
+		 */
+		ssrSlideShift?: boolean;
+		/**
+		 * `Lightbox.Caption`'s fallback while no item has registered yet (a
+		 * viewer rendered already open): the initially active item's caption.
+		 */
+		captionFallback?: string;
 	} = $props();
 
 	// Same key as the original docs, so the preference carries over.
@@ -102,7 +124,9 @@
 	);
 </script>
 
-<Lightbox.Portal>
+{#snippet fallbackCaption()}{captionFallback}{/snippet}
+
+<Lightbox.Portal {...portalProps}>
 	<Lightbox.Backdrop class="lightbox-demo-backdrop {backdropTone} fixed inset-0" />
 	<Lightbox.Content
 		aria-label={ariaLabel}
@@ -117,14 +141,17 @@
 				aria-label="Full-size images"
 				aria-roledescription="carousel"
 				{preload}
+				ssrSlideShift={ssrSlideShift && !snug}
 				class={snug
 					? 'lightbox-demo-slides lightbox-demo-slides-snug flex-1 [&::-webkit-scrollbar]:hidden'
-					: 'lightbox-demo-slides flex-1 gap-5 md:gap-0 [&::-webkit-scrollbar]:hidden'}
+					: // --lightbox-ssr-slide-gap restates the gap utilities for ssrSlideShift,
+						// which can't read a computed gap (keep the pairs in sync).
+						'lightbox-demo-slides flex-1 gap-5 [--lightbox-ssr-slide-gap:1.25rem] md:gap-0 md:[--lightbox-ssr-slide-gap:0px] [&::-webkit-scrollbar]:hidden'}
 				style={snug && items.length > 0
 					? `--lightbox-snug-ratio-start: ${ratio(items[0]!)}; --lightbox-snug-ratio-end: ${ratio(items[items.length - 1]!)};`
 					: undefined}
 			>
-				{#each items as item, i (item.src)}
+				{#each items as item, i (item.id ?? item.src)}
 					<Lightbox.Slide
 						class={snug
 							? 'lightbox-demo-slide-snug lightbox-demo-slide-pad z-0 h-full'
@@ -149,6 +176,8 @@
 											height={item.height}
 											class="overflow-hidden rounded-none after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded-[inherit] md:rounded-lg md:after:shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.1)] md:dark:after:shadow-[inset_0_0_0_0.5px_rgba(255,255,255,0.12)]"
 										>
+											<!-- No placeholder unless the item has no trigger image
+											     (see `destinationBlur`). -->
 											<img
 												src={item.src}
 												alt={item.alt}
@@ -157,6 +186,10 @@
 												loading="eager"
 												draggable="false"
 												class="select-none"
+												style={item.destinationBlur && item.blurDataURL
+													? blurPlaceholderStyle({ ...item, blurDataURL: item.blurDataURL })
+													: undefined}
+												{@attach item.destinationBlur ? clearBlurPlaceholder : null}
 											/>
 										</Lightbox.Media>
 									</Lightbox.Zoom>
@@ -217,6 +250,7 @@
 			<div class="flex max-w-full flex-col items-center text-center">
 				<Lightbox.Caption
 					class="block max-w-full truncate text-[13px] leading-tight font-medium text-neutral-900 dark:text-neutral-50"
+					children={captionFallback ? fallbackCaption : undefined}
 				/>
 				{#if items.length > 1}
 					<Lightbox.Counter
@@ -233,9 +267,19 @@
 					class="lightbox-demo-thumbnail-strip pointer-events-auto hidden md:block"
 				>
 					<Lightbox.ThumbnailStripTrack aria-label="Photo thumbnails">
-						{#each items as item, i (item.src)}
+						{#each items as item, i (item.id ?? item.src)}
 							<Lightbox.Thumbnail index={i}>
-								<img src={item.thumb} alt={item.alt} draggable="false" />
+								<!-- Strip thumbs aren't bridged (only the destination is), so
+								     they take the blur-up placeholder like triggers do. -->
+								<img
+									src={item.thumb}
+									alt={item.alt}
+									draggable="false"
+									style={item.blurDataURL
+										? blurPlaceholderStyle({ ...item, blurDataURL: item.blurDataURL })
+										: undefined}
+									{@attach item.blurDataURL ? clearBlurPlaceholder : null}
+								/>
 							</Lightbox.Thumbnail>
 						{/each}
 					</Lightbox.ThumbnailStripTrack>

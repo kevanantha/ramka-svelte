@@ -10,6 +10,16 @@ export interface GalleryItem {
 	height: number;
 	alt: string;
 	caption: string;
+	/** Stable key for the slide (defaults to `src`). */
+	id?: string;
+	/** 8px LQIP for the blur-up placeholder (see blur-placeholder.ts). */
+	blurDataURL?: string;
+	/**
+	 * Blur-up placeholder on the destination image. Only for items whose
+	 * index has no trigger image: otherwise Ramka paints the trigger's decoded
+	 * thumb behind the destination, and a blur would cover that bridge.
+	 */
+	destinationBlur?: boolean;
 }
 
 function photo(
