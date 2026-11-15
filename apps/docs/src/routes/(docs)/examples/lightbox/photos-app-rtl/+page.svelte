@@ -6,15 +6,13 @@
   in development when they disagree.
 -->
 <script lang="ts">
+	import PageMeta from '#lib/components/docs/PageMeta.svelte';
 	import PhotosAppView from '../photos-app/PhotosAppView.svelte';
 </script>
 
-<svelte:head>
-	<title>Photos app example (RTL) — ramka-svelte</title>
-	<meta
-		name="description"
-		content="The photos app example mirrored for a right-to-left locale: dir=&quot;rtl&quot; on Lightbox.Root mirrors navigation, the thumbnail strip, and the arrow keys."
-	/>
-</svelte:head>
+<PageMeta
+	title="Photos app example (RTL)"
+	description={'The photos app example mirrored for a right-to-left locale: dir="rtl" on Lightbox.Root mirrors navigation, the thumbnail strip, and the arrow keys.'}
+/>
 
 <PhotosAppView dir="rtl" />

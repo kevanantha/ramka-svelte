@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/docs/PageMeta.svelte';
 	import ComponentPreview from '#lib/components/ComponentPreview.svelte';
 	import ExampleShell from '#lib/components/ExampleShell.svelte';
 	import Demo from './Demo.svelte';
@@ -6,13 +7,10 @@
 	let { data } = $props();
 </script>
 
-<svelte:head>
-	<title>Stories lightbox preset — ramka-svelte</title>
-	<meta
-		name="description"
-		content="An Instagram Stories-style viewer for Svelte: an avatar tray that crossfades into 9:16 video with a scroll-driven 3D page turn, built with ramka-svelte."
-	/>
-</svelte:head>
+<PageMeta
+	title="Stories lightbox preset"
+	description="An Instagram Stories-style viewer for Svelte: an avatar tray that crossfades into 9:16 video with a scroll-driven 3D page turn, built with ramka-svelte."
+/>
 
 <ExampleShell title="Stories" docsHref="/docs/lightbox" docsLabel="Lightbox overview">
 	{#snippet description()}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/docs/PageMeta.svelte';
 	import ComponentPreview from '#lib/components/ComponentPreview.svelte';
 	import ExampleShell from '#lib/components/ExampleShell.svelte';
 	import Demo from './Demo.svelte';
@@ -6,13 +7,10 @@
 	let { data } = $props();
 </script>
 
-<svelte:head>
-	<title>Twitter-style lightbox preset — ramka-svelte</title>
-	<meta
-		name="description"
-		content="A Twitter-style media viewer for Svelte: split media and thread sidebar, translucent backdrop, and edge navigation, built with ramka-svelte."
-	/>
-</svelte:head>
+<PageMeta
+	title="Twitter-style lightbox preset"
+	description="A Twitter-style media viewer for Svelte: split media and thread sidebar, translucent backdrop, and edge navigation, built with ramka-svelte."
+/>
 
 <ExampleShell title="Twitter" docsHref="/docs/lightbox" docsLabel="Lightbox overview">
 	{#snippet description()}

@@ -1,11 +1,9 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/docs/PageMeta.svelte';
 	let { data } = $props();
 </script>
 
-<svelte:head>
-	<title>License — ramka-svelte</title>
-	<meta name="description" content="ramka-svelte is free software under the MIT License." />
-</svelte:head>
+<PageMeta title="License" description="ramka-svelte is free software under the MIT License." />
 
 <section class="mx-auto w-full max-w-2xl px-6 pt-16 pb-20 md:pt-20 md:pb-24">
 	<h1

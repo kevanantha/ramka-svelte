@@ -39,6 +39,11 @@
 		`${modalIndex === -1 ? EXAMPLE_PAGE_TITLE : interceptedPhotoTitle(interceptedPhotos[modalIndex]!)} — ramka-svelte`
 	);
 
+	const description =
+		'A photo grid wired to SvelteKit shallow routing: clicking a tile shallow-navigates to the photo URL and the lightbox opens over the grid; loading that URL cold renders a standalone photo page instead. Built with ramka-svelte.';
+	// Share cards describe the grid, whatever photo the live title follows.
+	const cardTitle = `${EXAMPLE_PAGE_TITLE} — ramka-svelte`;
+
 	function intercept(event: MouseEvent & { currentTarget: HTMLAnchorElement }) {
 		// Let the browser have modified clicks (new tab, download, …).
 		if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
@@ -52,10 +57,11 @@
 <svelte:head>
 	<!-- Swipes replace the photo URL, and the title follows it. -->
 	<title>{title}</title>
-	<meta
-		name="description"
-		content="A photo grid wired to SvelteKit shallow routing: clicking a tile shallow-navigates to the photo URL and the lightbox opens over the grid; loading that URL cold renders a standalone photo page instead. Built with ramka-svelte."
-	/>
+	<meta name="description" content={description} />
+	<meta property="og:title" content={cardTitle} />
+	<meta property="og:description" content={description} />
+	<meta name="twitter:title" content={cardTitle} />
+	<meta name="twitter:description" content={description} />
 </svelte:head>
 
 <ExampleShell

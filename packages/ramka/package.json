@@ -16,7 +16,13 @@
 	"type": "module",
 	"keywords": [
 		"svelte",
+		"svelte5",
+		"sveltekit",
 		"lightbox",
+		"svelte-lightbox",
+		"ramka",
+		"image-viewer",
+		"photo-gallery",
 		"image-gallery",
 		"gallery",
 		"carousel",

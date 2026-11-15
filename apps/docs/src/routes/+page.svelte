@@ -4,8 +4,40 @@
 	import InstallCommand from '#lib/components/InstallCommand.svelte';
 	import LandingDemo from '#lib/components/LandingDemo.svelte';
 	import GitHubIcon from '#lib/components/GitHubIcon.svelte';
-	import { GITHUB_URL } from '#lib/site.js';
+	import { GITHUB_URL, ORIGINAL_URL, SITE_NAME, SITE_URL } from '#lib/site.js';
+
+	const title = 'ramka-svelte — The lightbox for Svelte';
+	const description =
+		'ramka-svelte: a headless Svelte lightbox with View Transitions morph animations, pinch to zoom, swipe navigation, and pull to dismiss. Unstyled, accessible image gallery primitives for Svelte 5. A port of ramka.';
+	const structuredData = JSON.stringify({
+		'@context': 'https://schema.org',
+		'@type': 'SoftwareSourceCode',
+		name: SITE_NAME,
+		alternateName: 'ramka for Svelte',
+		description,
+		url: SITE_URL,
+		codeRepository: GITHUB_URL,
+		programmingLanguage: ['Svelte', 'TypeScript'],
+		runtimePlatform: 'Svelte 5',
+		license: 'https://opensource.org/licenses/MIT',
+		author: { '@type': 'Person', name: 'Kevin Anantha' },
+		isBasedOn: ORIGINAL_URL,
+		keywords:
+			'svelte lightbox, sveltekit lightbox, svelte image gallery, headless, view transitions'
+	}).replaceAll('<', '\\u003c');
 </script>
+
+<svelte:head>
+	<title>{title}</title>
+	<meta name="description" content={description} />
+	<meta property="og:title" content={title} />
+	<meta property="og:description" content={description} />
+	<meta property="og:type" content="website" />
+	<meta name="twitter:title" content={title} />
+	<meta name="twitter:description" content={description} />
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+	{@html `<script type="application/ld+json">${structuredData}</script>`}
+</svelte:head>
 
 <div class="isolate flex min-h-screen flex-col">
 	<SiteHeader />

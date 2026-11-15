@@ -1,11 +1,12 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/docs/PageMeta.svelte';
 	let { data } = $props();
 </script>
 
-<svelte:head>
-	<title>Third-party notices — ramka-svelte</title>
-	<meta name="description" content="Third-party code included in ramka-svelte, with its license." />
-</svelte:head>
+<PageMeta
+	title="Third-party notices"
+	description="Third-party code included in ramka-svelte, with its license."
+/>
 
 <section class="mx-auto w-full max-w-2xl px-6 pt-16 pb-20 md:pt-20 md:pb-24">
 	<h1

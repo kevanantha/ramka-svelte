@@ -18,7 +18,7 @@ Requires Svelte 5.40 or later.
 
 ## Status
 
-Every part, guide, preset, example and blog post on [ramka.dev](https://ramka.dev) is ported, and the docs site at [ramka-svelte.vercel.app](https://ramka-svelte.vercel.app) is the Svelte version of it. ramka's own test suites are ported with the original titles and assertions: 796 vitest cases, and 106 Playwright cases on the original's five projects (desktop Chromium, WebKit and Firefox, plus emulated Pixel 7 and iPhone 15).
+Every part, guide, preset and example on [ramka.dev](https://ramka.dev) is ported, and the docs site at [ramka-svelte.vercel.app](https://ramka-svelte.vercel.app) is the Svelte version of it. ramka's own test suites are ported with the original titles and assertions: 796 vitest cases, and 106 Playwright cases on the original's five projects (desktop Chromium, WebKit and Firefox, plus emulated Pixel 7 and iPhone 15).
 
 What's in the box:
 

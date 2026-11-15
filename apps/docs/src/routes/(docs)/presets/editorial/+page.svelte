@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/docs/PageMeta.svelte';
 	import ComponentPreview from '#lib/components/ComponentPreview.svelte';
 	import ExampleShell from '#lib/components/ExampleShell.svelte';
 	import Demo from './Demo.svelte';
@@ -6,13 +7,10 @@
 	let { data } = $props();
 </script>
 
-<svelte:head>
-	<title>Editorial lightbox preset — ramka-svelte</title>
-	<meta
-		name="description"
-		content="A newsroom article-figure lightbox for Svelte: near-black surface with a caption and credit block, built with ramka-svelte."
-	/>
-</svelte:head>
+<PageMeta
+	title="Editorial lightbox preset"
+	description="A newsroom article-figure lightbox for Svelte: near-black surface with a caption and credit block, built with ramka-svelte."
+/>
 
 <ExampleShell title="Editorial" docsHref="/docs/lightbox" docsLabel="Lightbox overview">
 	{#snippet description()}

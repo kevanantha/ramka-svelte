@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/docs/PageMeta.svelte';
 	import ComponentPreview from '#lib/components/ComponentPreview.svelte';
 	import ExampleShell from '#lib/components/ExampleShell.svelte';
 	import Demo from './Demo.svelte';
@@ -6,13 +7,10 @@
 	let { data } = $props();
 </script>
 
-<svelte:head>
-	<title>Store gallery lightbox preset — ramka-svelte</title>
-	<meta
-		name="description"
-		content="An e-commerce product gallery lightbox for Svelte: thumbnail rail and a buy panel with price, highlights, and a CTA, built from ramka-svelte lightbox primitives."
-	/>
-</svelte:head>
+<PageMeta
+	title="Store gallery lightbox preset"
+	description="An e-commerce product gallery lightbox for Svelte: thumbnail rail and a buy panel with price, highlights, and a CTA, built from ramka-svelte lightbox primitives."
+/>
 
 <ExampleShell title="Store" docsHref="/docs/lightbox" docsLabel="Lightbox overview">
 	{#snippet description()}

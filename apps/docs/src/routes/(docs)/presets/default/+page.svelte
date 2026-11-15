@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/docs/PageMeta.svelte';
 	import ExampleShell from '#lib/components/ExampleShell.svelte';
 	import PresetVariantPreview from '#lib/components/PresetVariantPreview.svelte';
 	import Demo from './Demo.svelte';
@@ -8,13 +9,10 @@
 	const strong = 'font-medium text-neutral-800 dark:text-neutral-200';
 </script>
 
-<svelte:head>
-	<title>Default lightbox preset — ramka-svelte</title>
-	<meta
-		name="description"
-		content="A copy-paste Svelte lightbox preset: morphing open, swipe navigation, zoom, thumbnails, and captions, styled like the ramka docs and ready for a design system."
-	/>
-</svelte:head>
+<PageMeta
+	title="Default lightbox preset"
+	description="A copy-paste Svelte lightbox preset: morphing open, swipe navigation, zoom, thumbnails, and captions, styled like the ramka docs and ready for a design system."
+/>
 
 <ExampleShell title="Default" docsHref="/docs/lightbox" docsLabel="Lightbox overview">
 	{#snippet description()}

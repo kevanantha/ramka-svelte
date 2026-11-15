@@ -1,5 +1,4 @@
-<!-- Same frame as the blog: site header (wordmark links home), the page,
-     site footer. -->
+<!-- Site header (wordmark links home), the page, site footer. -->
 <script lang="ts">
 	import SiteFooter from '#lib/components/SiteFooter.svelte';
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
