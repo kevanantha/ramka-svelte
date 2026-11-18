@@ -110,9 +110,7 @@
 		</p>
 		<CodeBlock excerpt={cspHeader} />
 		<p>
-			This is the industry-standard shape — Base UI and Material UI document the same split. Style <em
-				>attributes</em
-			>
+			This is the industry-standard shape. Style <em>attributes</em>
 			cannot exfiltrate data or execute code the way style elements can, so allowing them is a far smaller
 			concession than <code class="text-xs">'unsafe-inline'</code> on elements.
 		</p>

@@ -119,7 +119,7 @@
 						</DropdownMenu.Sub>
 					{/if}
 					<DropdownMenu.Separator class={menuSeparatorClass} />
-					<!-- Toggling keeps the menu open, like the original's Base UI checkbox item. -->
+					<!-- Toggling keeps the menu open, like the original's checkbox item. -->
 					<DropdownMenu.CheckboxItem
 						class={menuCheckboxItemClass}
 						closeOnSelect={false}

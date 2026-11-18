@@ -15,10 +15,10 @@
 	let { props, partId }: { props: PropRow[]; partId?: string } = $props();
 
 	const panelId = $props.id();
-	/** Open rows. Several may be open at once (Base UI Accordion `multiple`). */
+	/** Open rows. Several may be open at once. */
 	let expanded = $state<Record<string, boolean>>({});
 
-	/** Collapsed Type column: match Base UI short forms. */
+	/** Collapsed Type column: match the original docs' short forms. */
 	function shortType(type: string): string {
 		const t = type.trim();
 		if (!t) return '—';

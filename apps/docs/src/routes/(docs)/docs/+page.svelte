@@ -26,9 +26,9 @@
 	<p
 		class="mt-5 max-w-2xl text-[17px] leading-7 text-pretty text-neutral-500 dark:text-neutral-400"
 	>
-		Unstyled, accessible lightbox primitives for Svelte — in the style of Bits UI and Base UI.
-		Compose your own lightbox UI on headless parts with view-transition morph by default, swipe
-		slides, zoom, and pull-to-dismiss.
+		Unstyled, accessible lightbox primitives for Svelte — in the style of Bits UI. Compose your own
+		lightbox UI on headless parts with view-transition morph by default, swipe slides, zoom, and
+		pull-to-dismiss.
 	</p>
 
 	<section class="mt-14 space-y-4">

@@ -153,9 +153,9 @@ describe('mergeProps', () => {
 		expect(screen.queryByTestId('content')).toBeNull();
 	});
 
-	// Svelte-only regression (no title in ramka's suite): Base UI lets a handler
-	// cancel the ones merged before it; ramka's mergeProps left that out, so a
-	// consumer's `preventDefault()` never cancels a part's action.
+	// Svelte-only regression (no title in ramka's suite): the original lets a
+	// handler cancel the ones merged before it; Svelte parts leave that out, so
+	// a consumer's `preventDefault()` never cancels a part's action.
 	it("a consumer handler's preventDefault does not cancel the part's action", async () => {
 		const prevent = { onclick: (event: Event) => event.preventDefault() };
 		const onValueChange = vi.fn();

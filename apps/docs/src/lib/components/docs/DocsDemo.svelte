@@ -1,4 +1,4 @@
-<!-- Base UI–style preview: live demo on top, code excerpt below, one shared border. -->
+<!-- Preview: live demo on top, code excerpt below, one shared border. -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import CodeBlock from './CodeBlock.svelte';

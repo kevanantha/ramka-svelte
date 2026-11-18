@@ -2,7 +2,7 @@
   Styling-variant switcher for preset pages: one tab per skin flavor
   (Tailwind / CSS), each with its own live demo and source card. Inactive
   variants unmount, so only one lightbox instance exists at a time and the
-  two skins never coexist in the DOM. Tabs follow the original's Base UI
+  two skins never coexist in the DOM. Tabs follow the original docs'
   tabs: arrows move focus (looping), Enter / Space / click activate.
 -->
 <script lang="ts" generics="Id extends string">

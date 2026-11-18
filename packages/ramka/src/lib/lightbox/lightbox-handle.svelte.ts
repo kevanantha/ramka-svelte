@@ -1,5 +1,5 @@
 /**
- * Base UI–style imperative handle for Lightbox.
+ * Imperative handle for Lightbox.
  *
  * `createHandle()` returns a stable object you pass to `Lightbox.Root` (and
  * optionally to detached `Lightbox.Trigger`s) for programmatic control.

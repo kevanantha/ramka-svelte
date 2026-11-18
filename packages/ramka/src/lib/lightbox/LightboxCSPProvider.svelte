@@ -14,8 +14,8 @@
 </script>
 
 <!--
-	Provides the CSP nonce for the inline `<style>` tags ramka renders —
-	mirrors Base UI's `CSPProvider`. Wrap it around everything that renders
+	Provides the CSP nonce for the inline `<style>` tags ramka renders.
+	Wrap it around everything that renders
 	lightbox parts (typically the app's root layout).
 
 	Only the three constant-text server-paint tags need it. The library's

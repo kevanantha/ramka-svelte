@@ -110,7 +110,7 @@ export const generatedProps: Record<string, PropRow[]> = {
 		{
 			"name": "handle",
 			"type": "LightboxHandle",
-			"description": "Handle from `Lightbox.createHandle()`. Pass the same handle as Root to use this Trigger outside the Root tree (Base UI Dialog-style detached triggers)."
+			"description": "Handle from `Lightbox.createHandle()`. Pass the same handle as Root to use this Trigger outside the Root tree (detached triggers)."
 		},
 		{
 			"name": "crossfade",

@@ -4,9 +4,8 @@ import StateAttrsLightbox from './fixtures/misc/StateAttrsLightbox.svelte';
 import { fireEvent, render, screen } from './test-utils';
 
 /**
- * Base UI serializes unmapped state keys as `data-${key.toLowerCase()}`.
- * CamelCase keys must be explicitly mapped (hyphenated) or suppressed —
- * otherwise we ship attrs like `data-morphtarget` / `data-maxzoom`.
+ * CamelCase state keys must be published hyphenated or not at all — never
+ * lowercased into attrs like `data-morphtarget` / `data-maxzoom`.
  */
 const FORBIDDEN_SQUASHED_ATTRS = [
 	'data-morphtarget',
@@ -32,7 +31,7 @@ function collectForbiddenAttrs(root: ParentNode = document): string[] {
 }
 
 describe('Lightbox state → data-* attributes', () => {
-	it('does not emit Base UI camelCase-squashed data attributes', () => {
+	it('does not emit camelCase-squashed data attributes', () => {
 		// Svelte: the render prop's `imageRef` / `morphRef` are the `image` /
 		// `morph` attachments of Trigger's `children` snippet.
 		render(StateAttrsLightbox);

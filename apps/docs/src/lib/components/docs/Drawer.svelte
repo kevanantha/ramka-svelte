@@ -1,5 +1,5 @@
 <!--
-  Bottom sheet for the mobile nav, after the original docs' Base UI drawer
+  Bottom sheet for the mobile nav, after the original docs' drawer
   (swipeDirection="down", showSwipeHandle): modal, a dimmed + blurred
   overlay, slides up on open, follows a downward drag and dismisses past a
   threshold or on a flick. Escape, an overlay tap and `open = false` close it;
@@ -69,7 +69,7 @@
 		}
 	}
 
-	// Swipe to dismiss, after Base UI's drawer: drag down from anywhere on the
+	// Swipe to dismiss, after the original docs' drawer: drag down from anywhere on the
 	// sheet while its list is scrolled to the top. On release it closes when
 	// the drag passes half the sheet's height, or when the whole gesture
 	// averaged at least 0.5px/ms (timed from the first move, at least 50ms).
@@ -92,7 +92,7 @@
 
 	function onpointermove(event: PointerEvent) {
 		if (event.pointerId !== pointerId) return;
-		// Like Base UI, measure from the first move, absorbing the gap a touch
+		// Like the original, measure from the first move, absorbing the gap a touch
 		// travels before its first touchmove; from the scrolling list, keep the
 		// press position so quick flicks still dismiss.
 		if (!moved) {

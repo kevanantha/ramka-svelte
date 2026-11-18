@@ -38,8 +38,7 @@
 		id?: string;
 		/**
 		 * Handle from `Lightbox.createHandle()`. Pass the same handle as Root to
-		 * use this Trigger outside the Root tree (Base UI Dialog-style detached
-		 * triggers).
+		 * use this Trigger outside the Root tree (detached triggers).
 		 */
 		handle?: LightboxHandle;
 		/**

@@ -65,7 +65,7 @@
 
 <DocsShell
 	title="Lightbox"
-	description="Accessible primitives for fullscreen media lightboxes — compound parts in the style of Base UI and Bits UI. Cosmetically unstyled: you own colors, chrome, and radius values. Ramka owns state, focus, gestures, morphs, and structural styles required for those mechanics."
+	description="Accessible primitives for fullscreen media lightboxes — compound parts in the style of Bits UI. Cosmetically unstyled: you own colors, chrome, and radius values. Ramka owns state, focus, gestures, morphs, and structural styles required for those mechanics."
 	{toc}
 >
 	<div class="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">

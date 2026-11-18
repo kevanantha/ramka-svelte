@@ -1,12 +1,12 @@
 /**
  * Class recipes for the bits-ui overlays the debug pages render inside an
- * open lightbox: the original docs' shadcn (Base UI) button, dropdown menu,
+ * open lightbox: the original docs' shadcn button, dropdown menu,
  * dialog, tooltip, radio group and label. Its neutral theme tokens map 1:1
  * onto Tailwind's palette (popover = white / neutral-900, muted = neutral-100
  * / neutral-800, secondary = zinc-100, primary = blue-700 / blue-800, ring =
  * neutral-400 / neutral-500), so the recipes use those colors directly.
  * Enter/exit animations are the original's tw-animate-css ones, keyed on
- * bits-ui's `data-state` instead of Base UI's `data-open` / `data-closed`;
+ * bits-ui's `data-state` instead of the original's `data-open` / `data-closed`;
  * menus keep the original's `animate-none!` by leaving them out.
  */
 

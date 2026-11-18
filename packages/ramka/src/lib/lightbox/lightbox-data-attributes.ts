@@ -11,7 +11,7 @@
  *   renders no host element.
  * - **Plain `data-*`**: transient UI state (`data-open`, `data-active`, …).
  *
- * Open/close state attrs follow Base UI Dialog conventions:
+ * Open/close state attrs:
  * - Trigger uses `data-popup-open` when the lightbox is open.
  * - Content/Backdrop use mutually exclusive `data-open` / `data-closed`.
  */

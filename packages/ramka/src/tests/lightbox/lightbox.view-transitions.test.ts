@@ -937,7 +937,7 @@ describe('Lightbox', () => {
 				expect(trigger).not.toHaveAttribute('data-morph-target');
 				fireEvent.click(trigger);
 				expect(trigger).toHaveAttribute('data-morph-target');
-				// Base UI must not also serialize the state key as `data-morphtarget`.
+				// The state key must not also be serialized as `data-morphtarget`.
 				expect(trigger).not.toHaveAttribute('data-morphtarget');
 			});
 

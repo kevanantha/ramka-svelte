@@ -51,8 +51,8 @@
 	</Dialog.Close>
 {/snippet}
 
-<!-- bits-ui adds the arrow to sideOffset (Base UI does not): -1 keeps the
-     original 4px offset between trigger and tooltip body. Base UI opens a
+<!-- bits-ui adds the arrow to sideOffset (the original does not): -1 keeps the
+     original 4px offset between trigger and tooltip body. The original opens a
      tooltip on keyboard focus only, so a dialog's autofocus on the help icon
      after a click does not pop it. -->
 <Tooltip.Provider delayDuration={200} ignoreNonKeyboardFocus>
@@ -103,7 +103,7 @@
 							</DropdownMenu.Item>
 						</DropdownMenu.Group>
 						<DropdownMenu.Separator class={menuSeparatorClass} />
-						<!-- Toggling keeps the menu open, like the original's Base UI checkbox item. -->
+						<!-- Toggling keeps the menu open, like the original's checkbox item. -->
 						<DropdownMenu.CheckboxItem
 							class={menuCheckboxItemClass}
 							closeOnSelect={false}
@@ -213,7 +213,7 @@
 								<Dialog.Trigger class={buttonClass('outline', 'sm')}>
 									Open nested dialog
 								</Dialog.Trigger>
-								<!-- No overlay: Base UI skips a nested dialog's backdrop, so the
+								<!-- No overlay: the original skips a nested dialog's backdrop, so the
 								     first dialog stays sharp behind this one. -->
 								<Dialog.Portal>
 									<Dialog.Content class="{dialogContentClass} sm:max-w-sm">
