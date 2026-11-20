@@ -4,6 +4,7 @@ import ImageGallery from './fixtures/engines/ImageGallery.svelte';
 import JumpHarness from './fixtures/engines/JumpHarness.svelte';
 import MediaGallery from './fixtures/engines/MediaGallery.svelte';
 import { stubConstructedSheets } from './style-sheets-test-utils';
+import { tryPaintCanvasPlaceholder } from '../../lib/lightbox/lightbox-placeholder';
 import { act, fireEvent, render } from './test-utils';
 
 // ---------------------------------------------------------------------------
@@ -503,5 +504,93 @@ describe('Lightbox.Media (morph + placeholder host)', () => {
 		expect(poster).toBeTruthy();
 		expect(poster!.getAttribute('src')).toBe('/poster.jpg');
 		expect(poster!.style.backgroundImage).toContain('/thumb.jpg');
+	});
+});
+
+describe('tryPaintCanvasPlaceholder canvas resolution', () => {
+	// Pixel 7: DPR 2.625, a 412×915 CSS-px lightbox box.
+	function paint(
+		natW: number,
+		natH: number,
+		fit: 'contain' | 'cover',
+		srcset?: { srcset: string; currentSrc: string }
+	) {
+		vi.spyOn(window, 'devicePixelRatio', 'get').mockReturnValue(2.625);
+		const ctx = { scale: vi.fn(), drawImage: vi.fn() };
+		vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+			ctx as unknown as CanvasRenderingContext2D
+		);
+		const source = document.createElement('img');
+		Object.defineProperties(source, {
+			complete: { value: true },
+			naturalWidth: { value: natW },
+			naturalHeight: { value: natH }
+		});
+		if (srcset) {
+			source.srcset = srcset.srcset;
+			Object.defineProperty(source, 'currentSrc', {
+				value: new URL(srcset.currentSrc, document.baseURI).href
+			});
+		}
+		const img = document.createElement('img');
+		Object.defineProperties(img, { clientWidth: { value: 412 }, clientHeight: { value: 915 } });
+		const host = document.createElement('div');
+		host.append(img);
+		const restore = tryPaintCanvasPlaceholder({
+			img,
+			source,
+			fit,
+			objectPosition: '50% 50%',
+			host
+		});
+		const canvas = host.querySelector('canvas')!;
+		restore?.();
+		return { canvas, ctx };
+	}
+
+	it('caps the canvas at the thumbnail resolution, not the screen', () => {
+		// A 600×800 tile contained in 412×915 draws at 412×549.33 CSS px, so the
+		// tile has 600/412 px per CSS px. The screen's 2.625 would make 1082×2402.
+		const { canvas, ctx } = paint(600, 800, 'contain');
+		expect([canvas.width, canvas.height]).toEqual([600, 1333]);
+		expect(ctx.scale).toHaveBeenCalledWith(600 / 412, 600 / 412);
+		const [, x, y, w, h] = ctx.drawImage.mock.calls[0];
+		expect([x, y, w, h].map((n: number) => +n.toFixed(2))).toEqual([0, 182.83, 412, 549.33]);
+	});
+
+	it('uses the cropped thumbnail pixels for cover', () => {
+		// Cover scales 800 px of height to 915 CSS px: 0.874 px per CSS px.
+		const { canvas } = paint(600, 800, 'cover');
+		expect([canvas.width, canvas.height]).toEqual([360, 800]);
+	});
+
+	it('still caps at the screen DPR when the thumbnail is larger', () => {
+		const { canvas } = paint(2400, 3200, 'contain');
+		expect([canvas.width, canvas.height]).toEqual([1082, 2402]);
+	});
+
+	it("counts the srcset candidate's real pixels, not its density-corrected size", () => {
+		// The 900w candidate reports naturalWidth 600 (sizes made it 1.5x dense).
+		const { canvas } = paint(600, 800, 'contain', {
+			srcset: '/t.jpg 300w, /m.jpg 900w, /l.jpg 2400w',
+			currentSrc: '/m.jpg'
+		});
+		expect([canvas.width, canvas.height]).toEqual([900, 1999]);
+	});
+
+	it('reads x descriptors and URLs that contain commas', () => {
+		const { canvas } = paint(600, 800, 'contain', {
+			srcset: '/a.jpg 1x, /b,c.jpg 1.25x',
+			currentSrc: '/b,c.jpg'
+		});
+		expect([canvas.width, canvas.height]).toEqual([750, 1666]);
+	});
+
+	it('keeps the screen resolution when the chosen candidate is unknown', () => {
+		const { canvas } = paint(600, 800, 'contain', {
+			srcset: '/t.jpg 300w',
+			currentSrc: '/elsewhere.jpg'
+		});
+		expect([canvas.width, canvas.height]).toEqual([1082, 2402]);
 	});
 });

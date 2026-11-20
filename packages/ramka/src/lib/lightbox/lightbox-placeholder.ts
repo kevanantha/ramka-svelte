@@ -49,6 +49,62 @@ export function resolveObjectPosition(
 }
 
 /**
+ * Bitmap pixels per `naturalWidth` unit of a decoded image. `naturalWidth` is
+ * density-corrected: a `srcset` candidate `640w` shown at `sizes="82px"`, or a
+ * `2x` candidate, reports fewer pixels than its bitmap holds. Reads the
+ * descriptor of the candidate `currentSrc` came from; `Infinity` when it can't
+ * be found, so the caller keeps the screen's resolution.
+ */
+function sourceDensity(source: HTMLImageElement): number {
+	const sets = [source.srcset];
+	if (source.parentElement?.tagName === 'PICTURE') {
+		for (const el of source.parentElement.querySelectorAll('source')) sets.push(el.srcset);
+	}
+	if (!sets.some(Boolean)) return 1;
+	for (const set of sets) {
+		for (const { url, descriptor } of parseSrcset(set)) {
+			if (resolveUrl(url) !== source.currentSrc) continue;
+			const match = /(?:^|\s)(\d*\.?\d+)([wx])(?:\s|$)/.exec(descriptor);
+			if (!match) return 1;
+			const value = Number(match[1]);
+			return match[2] === 'w' ? value / source.naturalWidth : value;
+		}
+	}
+	// `src` alone may still be the chosen image alongside a `srcset` without it.
+	return resolveUrl(source.getAttribute('src') ?? '') === source.currentSrc ? 1 : Infinity;
+}
+
+function resolveUrl(url: string): string | null {
+	try {
+		return new URL(url, document.baseURI).href;
+	} catch {
+		return null;
+	}
+}
+
+/** `srcset` candidates per the HTML spec's split: URL, then descriptors up to a comma. */
+function parseSrcset(srcset: string): { url: string; descriptor: string }[] {
+	const candidates: { url: string; descriptor: string }[] = [];
+	let i = 0;
+	while (i < srcset.length) {
+		while (i < srcset.length && /[\s,]/.test(srcset[i])) i++;
+		const start = i;
+		while (i < srcset.length && !/\s/.test(srcset[i])) i++;
+		let url = srcset.slice(start, i);
+		let descriptor = '';
+		if (url.endsWith(',')) {
+			url = url.replace(/,+$/, '');
+		} else {
+			const descStart = i;
+			while (i < srcset.length && srcset[i] !== ',') i++;
+			descriptor = srcset.slice(descStart, i).trim();
+		}
+		if (url) candidates.push({ url, descriptor });
+	}
+	return candidates;
+}
+
+/**
  * Paint the trigger thumbnail into a `<canvas>` placed behind the destination
  * `<img>` as the open-morph bridge, returning a restore fn — or `null` when a
  * canvas can't be used (no 2D context, no decoded source, unresolved box) so the
@@ -88,7 +144,15 @@ export function tryPaintCanvasPlaceholder(args: CanvasPlaceholderArgs): (() => v
 	}
 	if (!ctx) return null;
 
-	const dpr = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 3);
+	// Letterbox rect from the trigger's intrinsic size (object-fit math).
+	const scale =
+		fit === 'cover' ? Math.max(boxW / natW, boxH / natH) : Math.min(boxW / natW, boxH / natH);
+	const drawW = natW * scale;
+	const drawH = natH * scale;
+	// Rasterize no finer than the thumbnail's own pixels: past that the canvas
+	// shows nothing more, and only costs main-thread raster and upload time.
+	const screenDpr = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 3);
+	const dpr = Math.min(screenDpr, sourceDensity(source) / scale);
 	canvas.width = Math.max(1, Math.round(boxW * dpr));
 	canvas.height = Math.max(1, Math.round(boxH * dpr));
 	canvas.setAttribute('data-ramka-placeholder', '');
@@ -101,11 +165,6 @@ export function tryPaintCanvasPlaceholder(args: CanvasPlaceholderArgs): (() => v
 	cstyle.zIndex = '-1'; // paint beneath the in-flow destination <img>
 	cstyle.pointerEvents = 'none';
 
-	// Letterbox rect from the trigger's intrinsic size (object-fit math).
-	const scale =
-		fit === 'cover' ? Math.max(boxW / natW, boxH / natH) : Math.min(boxW / natW, boxH / natH);
-	const drawW = natW * scale;
-	const drawH = natH * scale;
 	const { x: posX, y: posY } = resolveObjectPosition(objectPosition, boxW - drawW, boxH - drawH);
 
 	try {
